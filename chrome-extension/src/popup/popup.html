@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OpenClaw Bridge</title>
+</head>
+<body>
+  <div class="popup-container">
+    <header class="popup-header">
+      <h1>OpenClaw Bridge</h1>
+      <div class="header-actions">
+        <button id="pair-agent-btn" class="btn btn-primary">+ Pair Agent</button>
+      </div>
+    </header>
+
+    <main class="popup-content">
+      <!-- No agents state -->
+      <div id="no-agents" class="empty-state">
+        <div class="empty-icon">🤖</div>
+        <h3>No Agents Paired</h3>
+        <p>Get started by pairing with your first OpenClaw agent.</p>
+        <button class="btn btn-primary">Pair Agent</button>
+      </div>
+
+      <!-- Agents list -->
+      <div id="agents-list" class="agents-list" style="display: none;">
+        <div class="agents-header">
+          <h3>Your Agents</h3>
+          <span id="agents-count" class="count-badge">0</span>
+        </div>
+        
+        <div id="agents-container" class="agents-container">
+          <!-- Agent items will be inserted here -->
+        </div>
+      </div>
+
+      <!-- Loading state -->
+      <div id="loading" class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading agents...</p>
+      </div>
+    </main>
+
+    <footer class="popup-footer">
+      <div class="footer-actions">
+        <button id="open-chat-btn" class="btn btn-secondary">Open Chat</button>
+        <button id="settings-btn" class="btn btn-secondary">Settings</button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Agent item template -->
+  <template id="agent-item-template">
+    <div class="agent-item" data-agent-id="">
+      <div class="agent-info">
+        <div class="agent-avatar">
+          <div class="agent-status"></div>
+        </div>
+        <div class="agent-details">
+          <h4 class="agent-name"></h4>
+          <p class="agent-status-text"></p>
+        </div>
+      </div>
+      <div class="agent-actions">
+        <button class="btn-icon chat-btn" title="Open Chat">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M2 2a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2.5a1 1 0 0 1 .8.4l1.9 2.533a1 1 0 0 0 1.6 0L10.7 14.4a1 1 0 0 1 .8-.4H14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H2Z"/>
+          </svg>
+        </button>
+        <button class="btn-icon remove-btn" title="Remove Agent">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+            <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </template>
+</body>
+</html>

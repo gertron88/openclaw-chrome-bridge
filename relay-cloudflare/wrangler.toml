@@ -1,0 +1,34 @@
+# Cloudflare Workers configuration for OpenClaw Chrome Bridge Relay
+name = "openclaw-chrome-relay"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Environment variables (set via wrangler secret put)
+# JWT_SECRET - for signing JWT tokens
+# AGENT_SECRET - for agent authentication
+
+# D1 Database
+[[d1_databases]]
+binding = "DB"
+database_name = "openclaw-relay"
+database_id = "your-d1-database-id"
+
+# Durable Objects
+[durable_objects]
+bindings = [
+  { name = "AGENT_CONNECTION", class_name = "AgentConnection" },
+  { name = "CLIENT_CONNECTION", class_name = "ClientConnection" },
+  { name = "MESSAGE_ROUTER", class_name = "MessageRouter" }
+]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["AgentConnection", "ClientConnection", "MessageRouter"]
+
+# Development settings
+[env.development]
+[[env.development.d1_databases]]
+binding = "DB"
+database_name = "openclaw-relay-dev"
+database_id = "your-dev-d1-database-id"

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OpenClaw Chat</title>
+</head>
+<body>
+  <div class="chat-container">
+    <!-- Sidebar for agent selection -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h2>🤖 Agents</h2>
+        <button id="collapse-sidebar" class="btn-icon" title="Collapse sidebar">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="agents-list" id="agents-list">
+        <!-- Agent items will be inserted here -->
+      </div>
+
+      <div class="sidebar-footer">
+        <button id="pair-new-agent" class="btn btn-secondary btn-full">
+          + Pair New Agent
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main chat area -->
+    <main class="chat-main" id="chat-main">
+      <!-- No agent selected state -->
+      <div class="empty-state" id="empty-state">
+        <div class="empty-content">
+          <div class="empty-icon">💬</div>
+          <h3>Welcome to OpenClaw Chat</h3>
+          <p>Select an agent from the sidebar to start chatting, or pair a new agent to get started.</p>
+          <button id="pair-first-agent" class="btn btn-primary">Pair Your First Agent</button>
+        </div>
+      </div>
+
+      <!-- Chat interface -->
+      <div class="chat-interface" id="chat-interface" style="display: none;">
+        <!-- Chat header -->
+        <header class="chat-header">
+          <button id="expand-sidebar" class="btn-icon sidebar-toggle" title="Show sidebar" style="display: none;">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/>
+            </svg>
+          </button>
+          
+          <div class="agent-info">
+            <div class="agent-avatar">
+              <div class="agent-status" id="current-agent-status"></div>
+            </div>
+            <div class="agent-details">
+              <h3 id="current-agent-name">Agent Name</h3>
+              <p id="current-agent-status-text">Connecting...</p>
+            </div>
+          </div>
+
+          <div class="chat-actions">
+            <button id="clear-chat" class="btn-icon" title="Clear chat">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8.5 1a.5.5 0 0 0-1 0v1.5a.5.5 0 0 0 1 0V1z"/>
+                <path d="M3 8a5 5 0 1 0 10 0 5 5 0 0 0-10 0zm4.5-5a4 4 0 1 1 0 8 4 4 0 0 1 0-8z"/>
+              </svg>
+            </button>
+            <button id="new-session" class="btn-icon" title="New conversation">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M14 1a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H4.414A2 2 0 0 0 3 11.586l-2 2V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12.793a.5.5 0 0 0 .854.353l2.853-2.853A1 1 0 0 1 4.414 12H14a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z"/>
+                <path d="M3 3.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5zM3 6a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9A.5.5 0 0 1 3 6zm0 2.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5z"/>
+              </svg>
+            </button>
+          </div>
+        </header>
+
+        <!-- Messages area -->
+        <div class="messages-container" id="messages-container">
+          <div class="messages-list" id="messages-list">
+            <!-- Messages will be inserted here -->
+          </div>
+        </div>
+
+        <!-- Input area -->
+        <div class="input-container">
+          <div class="input-wrapper">
+            <textarea 
+              id="message-input" 
+              class="message-input" 
+              placeholder="Type your message..."
+              rows="1"
+            ></textarea>
+            <button id="send-button" class="send-button" disabled>
+              <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M15.964.686a.5.5 0 0 0-.65-.65L.767 5.855H.766l-.452.18a.5.5 0 0 0-.082.887l.41.26.001.002 4.995 3.178 3.178 4.995.002.002.26.41a.5.5 0 0 0 .886-.083l6-15Zm-1.833 1.89L6.637 10.07l-.215-.338a.5.5 0 0 0-.154-.154l-.338-.215 7.494-7.494 1.178-.471-.47 1.178Z"/>
+              </svg>
+            </button>
+          </div>
+          <div class="input-footer">
+            <div class="connection-status" id="connection-status">
+              <div class="status-indicator offline"></div>
+              <span class="status-text">Disconnected</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Templates -->
+  
+  <!-- Agent list item template -->
+  <template id="agent-list-item-template">
+    <div class="agent-list-item" data-agent-id="">
+      <div class="agent-avatar">
+        <div class="agent-status"></div>
+      </div>
+      <div class="agent-info">
+        <h4 class="agent-name"></h4>
+        <p class="agent-last-message"></p>
+      </div>
+      <div class="agent-actions">
+        <button class="btn-icon remove-agent" title="Remove agent">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </template>
+
+  <!-- Message template -->
+  <template id="message-template">
+    <div class="message" data-message-id="" data-type="">
+      <div class="message-content">
+        <div class="message-text"></div>
+        <div class="message-meta">
+          <span class="message-time"></span>
+          <span class="message-status"></span>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- Typing indicator template -->
+  <template id="typing-indicator-template">
+    <div class="message agent-message typing-indicator">
+      <div class="message-content">
+        <div class="typing-dots">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+      </div>
+    </div>
+  </template>
+</body>
+</html>

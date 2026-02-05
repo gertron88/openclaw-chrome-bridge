@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+*.js.map
+
+# Environment
+.env
+.env.local
+.env.*.local
+*.local
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Cloudflare
+.wrangler/
+.dev.vars
+
+# Chrome extension
+chrome-extension/*.zip
+chrome-extension/*.crx
+chrome-extension/*.pem
+
+# Secrets
+secrets/
+*.key
+*.pem
+*.crt

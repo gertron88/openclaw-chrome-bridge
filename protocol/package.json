@@ -1,0 +1,25 @@
+{
+  "name": "@openclaw/protocol",
+  "version": "1.0.0",
+  "description": "Shared TypeScript types and schemas for OpenClaw Chrome Bridge protocol",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist"
+  },
+  "keywords": ["openclaw", "protocol", "types", "zod"],
+  "author": "OpenClaw",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "zod": "^3.22.4"
+  },
+  "files": [
+    "dist/**/*"
+  ]
+}

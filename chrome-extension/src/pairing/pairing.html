@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pair with OpenClaw Agent</title>
+</head>
+<body>
+  <div class="pairing-container">
+    <header class="pairing-header">
+      <div class="header-content">
+        <h1>🤖 Pair with Agent</h1>
+        <p>Connect to your OpenClaw agent to start chatting</p>
+      </div>
+    </header>
+
+    <main class="pairing-main">
+      <div class="pairing-form">
+        <!-- Step 1: Choose relay mode -->
+        <div class="step" id="step-relay-mode">
+          <div class="step-header">
+            <span class="step-number">1</span>
+            <h2>Choose Relay Mode</h2>
+          </div>
+          
+          <div class="relay-options">
+            <label class="relay-option">
+              <input type="radio" name="relay-mode" value="hosted" checked>
+              <div class="option-content">
+                <div class="option-icon">☁️</div>
+                <div class="option-details">
+                  <h3>Hosted Relay</h3>
+                  <p>Use the official OpenClaw relay service. Easy setup, reliable connection.</p>
+                  <small class="option-note">Recommended for most users</small>
+                </div>
+              </div>
+            </label>
+
+            <label class="relay-option">
+              <input type="radio" name="relay-mode" value="custom">
+              <div class="option-content">
+                <div class="option-icon">🏠</div>
+                <div class="option-details">
+                  <h3>Custom Relay</h3>
+                  <p>Connect to your own self-hosted relay server.</p>
+                  <small class="option-note">For advanced users</small>
+                </div>
+              </div>
+            </label>
+          </div>
+
+          <button id="continue-btn" class="btn btn-primary">Continue</button>
+        </div>
+
+        <!-- Step 2: Custom relay URL (only shown for custom mode) -->
+        <div class="step" id="step-custom-relay" style="display: none;">
+          <div class="step-header">
+            <button class="back-btn" id="back-to-mode">← Back</button>
+            <div>
+              <span class="step-number">2</span>
+              <h2>Custom Relay URL</h2>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="relay-url">Relay Server URL</label>
+            <input 
+              type="url" 
+              id="relay-url" 
+              placeholder="https://your-relay.example.com"
+              class="form-input"
+            >
+            <small class="form-help">Enter the full URL of your self-hosted relay server</small>
+          </div>
+
+          <button id="test-relay-btn" class="btn btn-secondary">Test Connection</button>
+          <button id="continue-custom-btn" class="btn btn-primary">Continue</button>
+        </div>
+
+        <!-- Step 3: Enter pairing code -->
+        <div class="step" id="step-pairing-code" style="display: none;">
+          <div class="step-header">
+            <button class="back-btn" id="back-to-relay">← Back</button>
+            <div>
+              <span class="step-number">3</span>
+              <h2>Enter Pairing Code</h2>
+            </div>
+          </div>
+
+          <div class="pairing-instructions">
+            <div class="instruction-card">
+              <h3>From your OpenClaw agent:</h3>
+              <ol>
+                <li>Run the command: <code>pair chrome</code></li>
+                <li>Copy the pairing code that appears</li>
+                <li>Enter it below</li>
+              </ol>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="pairing-code">Pairing Code</label>
+            <input 
+              type="text" 
+              id="pairing-code" 
+              placeholder="Enter 6-digit code from agent"
+              class="form-input code-input"
+              maxlength="20"
+              autocomplete="off"
+            >
+            <small class="form-help">The code expires in 5 minutes</small>
+          </div>
+
+          <div class="form-group">
+            <label for="device-label">Device Name (optional)</label>
+            <input 
+              type="text" 
+              id="device-label" 
+              placeholder="Chrome on My Computer"
+              class="form-input"
+              maxlength="50"
+            >
+            <small class="form-help">A friendly name to identify this device</small>
+          </div>
+
+          <button id="pair-btn" class="btn btn-primary" disabled>Pair Agent</button>
+        </div>
+
+        <!-- Loading state -->
+        <div class="step loading-step" id="step-loading" style="display: none;">
+          <div class="loading-content">
+            <div class="spinner"></div>
+            <h2>Pairing with Agent...</h2>
+            <p id="loading-message">Connecting to relay server</p>
+          </div>
+        </div>
+
+        <!-- Success state -->
+        <div class="step success-step" id="step-success" style="display: none;">
+          <div class="success-content">
+            <div class="success-icon">✅</div>
+            <h2>Successfully Paired!</h2>
+            <p>You can now chat with <strong id="success-agent-name"></strong></p>
+            <div class="success-actions">
+              <button id="open-chat-success-btn" class="btn btn-primary">Start Chatting</button>
+              <button id="pair-another-btn" class="btn btn-secondary">Pair Another Agent</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Error state -->
+        <div class="step error-step" id="step-error" style="display: none;">
+          <div class="error-content">
+            <div class="error-icon">❌</div>
+            <h2>Pairing Failed</h2>
+            <p id="error-message">An error occurred during pairing</p>
+            <div class="error-actions">
+              <button id="retry-btn" class="btn btn-primary">Try Again</button>
+              <button id="back-to-start-btn" class="btn btn-secondary">Start Over</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="pairing-footer">
+      <div class="help-links">
+        <a href="#" id="help-link">Need help?</a>
+        <a href="#" id="support-link">Contact support</a>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

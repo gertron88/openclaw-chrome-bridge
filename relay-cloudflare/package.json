@@ -1,0 +1,38 @@
+{
+  "name": "openclaw-chrome-relay-cloudflare",
+  "version": "1.0.0",
+  "description": "Cloudflare Workers relay for OpenClaw Chrome Bridge",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "build": "wrangler types --env-interface CloudflareBindings src/config",
+    "db:create": "wrangler d1 create openclaw-relay",
+    "db:migrate": "wrangler d1 migrations apply openclaw-relay",
+    "db:migrate:dev": "wrangler d1 migrations apply openclaw-relay --local",
+    "db:console": "wrangler d1 console openclaw-relay",
+    "types": "wrangler types --env-interface CloudflareBindings src/config"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240320.1",
+    "typescript": "^5.5.4",
+    "wrangler": "^3.86.1"
+  },
+  "dependencies": {
+    "hono": "^4.7.14",
+    "zod": "^3.23.8",
+    "@hono/zod-validator": "^0.3.0"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "keywords": [
+    "cloudflare",
+    "workers",
+    "openclaw",
+    "chrome",
+    "bridge",
+    "relay"
+  ],
+  "license": "MIT"
+}

@@ -1,0 +1,30 @@
+{
+  "name": "openclaw-chrome-bridge",
+  "version": "0.1.0",
+  "description": "Chrome extension for OpenClaw/Clawdbot chat bridge",
+  "private": true,
+  "scripts": {
+    "build": "webpack --mode=production",
+    "dev": "webpack --mode=development --watch",
+    "clean": "rimraf dist",
+    "package": "npm run build && cd dist && zip -r ../openclaw-chrome-bridge.zip ."
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.258",
+    "@types/node": "^20.10.0",
+    "@types/uuid": "^9.0.7",
+    "copy-webpack-plugin": "^12.0.2",
+    "css-loader": "^6.8.1",
+    "html-webpack-plugin": "^5.6.0",
+    "mini-css-extract-plugin": "^2.7.6",
+    "rimraf": "^5.0.5",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.3.3",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.4",
+    "zod": "^3.22.4"
+  },
+  "dependencies": {
+    "uuid": "^9.0.1"
+  }
+}
