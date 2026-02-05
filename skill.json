@@ -1,0 +1,53 @@
+{
+  "name": "openclaw-chrome-bridge",
+  "version": "1.0.0",
+  "description": "Chrome Chat Bridge for AI agents - connect users to agents via secure relay",
+  "author": "gertron88",
+  "license": "MIT",
+  "homepage": "https://github.com/gertron88/openclaw-chrome-bridge",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gertron88/openclaw-chrome-bridge"
+  },
+  "keywords": [
+    "chrome-extension",
+    "chat",
+    "relay",
+    "websocket",
+    "ai-agent",
+    "clawdbot",
+    "openclaw"
+  ],
+  "category": "communication",
+  "components": [
+    {
+      "name": "protocol",
+      "path": "protocol/",
+      "description": "Shared TypeScript types and Zod schemas"
+    },
+    {
+      "name": "relay-selfhost",
+      "path": "relay-selfhost/",
+      "description": "Self-hosted Node.js relay server"
+    },
+    {
+      "name": "relay-cloudflare",
+      "path": "relay-cloudflare/",
+      "description": "Cloudflare Workers relay server"
+    },
+    {
+      "name": "agent-connector",
+      "path": "agent-connector/",
+      "description": "Agent connector skill for Clawdbot"
+    },
+    {
+      "name": "chrome-extension",
+      "path": "chrome-extension/",
+      "description": "Chrome MV3 extension for chat"
+    }
+  ],
+  "requirements": {
+    "node": ">=18.0.0"
+  },
+  "cloudflareRelay": "https://openclaw-chrome-relay.gertron88.workers.dev"
+}
