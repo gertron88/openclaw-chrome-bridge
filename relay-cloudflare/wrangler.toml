@@ -12,7 +12,7 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "openclaw-relay"
-database_id = "your-d1-database-id"
+database_id = "df61b083-8943-4f58-9b27-74d3ff6b55b3"
 
 # Durable Objects
 [durable_objects]
@@ -24,7 +24,7 @@ bindings = [
 
 [[migrations]]
 tag = "v1"
-new_classes = ["AgentConnection", "ClientConnection", "MessageRouter"]
+new_sqlite_classes = ["AgentConnection", "ClientConnection", "MessageRouter"]
 
 # Development settings
 [env.development]
