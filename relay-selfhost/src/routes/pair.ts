@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { getDatabase } from '../db/index.js';
+import { getDatabaseSync } from '../db/index.js';
 import { generatePairingCode, createTokenPair, generateDeviceId } from '../auth/tokens.js';
 import { pairingRateLimit, messageSizeLimit } from '../middleware/ratelimit.js';
 
@@ -19,7 +19,7 @@ interface CompletePairingRequest {
 }
 
 export async function pairRoutes(fastify: FastifyInstance) {
-  const db = getDatabase();
+  const db = getDatabaseSync();
 
   /**
    * POST /api/pair/start
@@ -104,7 +104,7 @@ export async function pairRoutes(fastify: FastifyInstance) {
       };
 
     } catch (error) {
-      fastify.log.error('Error starting pairing:', error);
+      fastify.log.error('Error starting pairing: ' + (error instanceof Error ? error.message : String(error)));
       return reply.status(500).send({
         error: 'Internal Server Error',
         message: 'Failed to start pairing process'
@@ -213,7 +213,7 @@ export async function pairRoutes(fastify: FastifyInstance) {
       };
 
     } catch (error) {
-      fastify.log.error('Error completing pairing:', error);
+      fastify.log.error('Error completing pairing: ' + (error instanceof Error ? error.message : String(error)));
       return reply.status(500).send({
         error: 'Internal Server Error',
         message: 'Failed to complete pairing process'

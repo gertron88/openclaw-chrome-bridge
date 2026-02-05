@@ -189,10 +189,10 @@ class PairingManager {
         this.showError(`Connection failed: ${response.status} ${response.statusText}`);
       }
     } catch (error) {
-      if (error.name === 'AbortError') {
+      if (error instanceof Error && error.name === 'AbortError') {
         this.showError('Connection timeout - please check the URL and try again');
       } else {
-        this.showError(`Connection failed: ${error.message}`);
+        this.showError(`Connection failed: ${error instanceof Error ? error.message : String(error)}`);
       }
     } finally {
       testBtn.disabled = false;
@@ -258,7 +258,7 @@ class PairingManager {
       }
     } catch (error) {
       console.error('Pairing failed:', error);
-      this.showPairingError(error.message || 'Network error occurred');
+      this.showPairingError(error instanceof Error ? error.message : 'Network error occurred');
     }
   }
 

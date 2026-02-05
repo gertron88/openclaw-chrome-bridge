@@ -59,7 +59,7 @@ export async function verifyAccessToken(token: string): Promise<AccessTokenPaylo
     
     return payload as AccessTokenPayload;
   } catch (error) {
-    throw new Error(`Invalid access token: ${error.message}`);
+    throw new Error(`Invalid access token: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
@@ -76,7 +76,7 @@ export async function verifyRefreshToken(token: string): Promise<RefreshTokenPay
     
     return payload as RefreshTokenPayload;
   } catch (error) {
-    throw new Error(`Invalid refresh token: ${error.message}`);
+    throw new Error(`Invalid refresh token: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 

@@ -78,13 +78,14 @@ export async function tokenRoutes(fastify: FastifyInstance) {
       };
 
     } catch (error) {
-      fastify.log.error('Error refreshing token:', error);
+      fastify.log.error('Error refreshing token: ' + (error instanceof Error ? error.message : String(error)));
       
       // Distinguish between client errors and server errors
-      if (error.message.includes('Invalid refresh token') || 
-          error.message.includes('not found') || 
-          error.message.includes('expired') ||
-          error.message.includes('mismatch')) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes('Invalid refresh token') || 
+          errorMessage.includes('not found') || 
+          errorMessage.includes('expired') ||
+          errorMessage.includes('mismatch')) {
         return reply.status(401).send({
           error: 'Unauthorized',
           message: 'Invalid or expired refresh token'
@@ -156,7 +157,7 @@ export async function tokenRoutes(fastify: FastifyInstance) {
       };
 
     } catch (error) {
-      fastify.log.error('Error revoking token:', error);
+      fastify.log.error('Error revoking token: ' + (error instanceof Error ? error.message : String(error)));
       
       // For security, we don't want to reveal whether the token existed or not
       // Always return success for revoke operations

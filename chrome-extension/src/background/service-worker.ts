@@ -146,7 +146,7 @@ async function handleMessage(
           sendResponse({ success: true, result: pairingResult });
         } catch (error) {
           console.error('Pairing failed:', error);
-          sendResponse({ success: false, error: error.message });
+          sendResponse({ success: false, error: error instanceof Error ? error.message : String(error) });
         }
         break;
 
@@ -192,8 +192,8 @@ async function handleMessage(
 
       case 'open_chat':
         // Open chat in side panel or new tab
-        if (chrome.sidePanel) {
-          await chrome.sidePanel.open({ windowId: sender.tab?.windowId });
+        if (chrome.sidePanel && sender.tab?.windowId) {
+          await chrome.sidePanel.open({ windowId: sender.tab.windowId });
         } else {
           // Fallback to new tab
           chrome.tabs.create({ url: chrome.runtime.getURL('chat.html') });
@@ -212,7 +212,7 @@ async function handleMessage(
     }
   } catch (error) {
     console.error('Error handling message:', error);
-    sendResponse({ success: false, error: error.message });
+    sendResponse({ success: false, error: error instanceof Error ? error.message : String(error) });
   }
 }
 

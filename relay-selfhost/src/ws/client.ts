@@ -1,11 +1,11 @@
 import { FastifyInstance } from 'fastify';
-import { SocketStream } from '@fastify/websocket';
+import { WebSocket } from 'ws';
 import { verifyAccessToken } from '../auth/jwt.js';
-import { getDatabase } from '../db/index.js';
+import { getDatabaseSync } from '../db/index.js';
 import { CONFIG } from '../config.js';
 
 export interface ClientConnection {
-  socket: SocketStream;
+  socket: WebSocket;
   deviceId: string;
   connectedAt: number;
   lastPing: number;
@@ -28,11 +28,11 @@ export function setRouterFunctions(
 }
 
 export async function setupClientWebSocket(fastify: FastifyInstance) {
-  const db = getDatabase();
+  const db = getDatabaseSync();
 
   fastify.register(async function (fastify) {
     fastify.get('/ws/client', { websocket: true }, (connection, request) => {
-      const socket = connection.socket;
+      const socket = connection;
       let clientConnection: ClientConnection | null = null;
       
       socket.on('message', async (data: Buffer) => {
@@ -165,7 +165,7 @@ export async function setupClientWebSocket(fastify: FastifyInstance) {
                 ts: Date.now()
               };
 
-              if (sendToAgent && sendToAgent(message.agent_id, chatRequest)) {
+              if (sendToAgent && typeof sendToAgent === 'function' && sendToAgent(message.agent_id, chatRequest)) {
                 // Message sent successfully
                 socket.send(JSON.stringify({
                   type: 'message_sent',
@@ -208,7 +208,7 @@ export async function setupClientWebSocket(fastify: FastifyInstance) {
           }
 
         } catch (error) {
-          fastify.log.error('Error processing client message:', error);
+          fastify.log.error('Error processing client message: ' + (error instanceof Error ? error.message : String(error)));
           socket.send(JSON.stringify({
             type: 'error',
             code: 'PROCESSING_ERROR',
@@ -223,8 +223,8 @@ export async function setupClientWebSocket(fastify: FastifyInstance) {
         }
       });
 
-      socket.on('error', (error) => {
-        fastify.log.error('Client WebSocket error:', error);
+      socket.on('error', (error: Error) => {
+        fastify.log.error('Client WebSocket error: ' + error.message);
         if (clientConnection) {
           clientConnections.delete(clientConnection.sessionId);
         }
@@ -238,7 +238,7 @@ export async function setupClientWebSocket(fastify: FastifyInstance) {
  */
 export function sendToClientsForDevice(deviceId: string, message: any): void {
   for (const connection of clientConnections.values()) {
-    if (connection.deviceId === deviceId && connection.socket.readyState === 1) {
+    if (connection.deviceId === deviceId && connection.socket.readyState === WebSocket.OPEN) {
       try {
         connection.socket.send(JSON.stringify(message));
       } catch (error) {
@@ -253,7 +253,7 @@ export function sendToClientsForDevice(deviceId: string, message: any): void {
  */
 export function sendToClientSession(sessionId: string, message: any): boolean {
   const connection = clientConnections.get(sessionId);
-  if (connection && connection.socket.readyState === 1) {
+  if (connection && connection.socket.readyState === WebSocket.OPEN) {
     try {
       connection.socket.send(JSON.stringify(message));
       return true;
@@ -269,13 +269,13 @@ export function sendToClientSession(sessionId: string, message: any): boolean {
  * Broadcast a message to all clients that have the specified agent paired
  */
 export function broadcastToAgentClients(agentId: string, message: any): void {
-  const db = getDatabase();
+  const db = getDatabaseSync();
   
   for (const connection of clientConnections.values()) {
     // Check if this device has the agent paired
     const agents = db.getAgentsForDevice(connection.deviceId);
     if (agents.some(agent => agent.id === agentId)) {
-      if (connection.socket.readyState === 1) {
+      if (connection.socket.readyState === WebSocket.OPEN) {
         try {
           connection.socket.send(JSON.stringify(message));
         } catch (error) {

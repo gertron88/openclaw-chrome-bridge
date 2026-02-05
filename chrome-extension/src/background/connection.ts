@@ -218,7 +218,7 @@ export class ConnectionManager {
           break;
           
         default:
-          console.warn('Unknown message type:', message.type);
+          console.warn('Unknown message type:', (message as any).type);
       }
     } catch (error) {
       console.error('Failed to handle message:', error, data);

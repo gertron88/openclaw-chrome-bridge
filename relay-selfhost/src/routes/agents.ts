@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { getDatabase } from '../db/index.js';
+import { getDatabaseSync } from '../db/index.js';
 import { verifyAccessToken, extractBearerToken } from '../auth/jwt.js';
 import { messageSizeLimit, requireAuth, createRateLimit } from '../middleware/ratelimit.js';
 
@@ -11,7 +11,7 @@ interface AgentInfo {
 }
 
 export async function agentRoutes(fastify: FastifyInstance) {
-  const db = getDatabase();
+  const db = getDatabaseSync();
 
   /**
    * GET /api/agents
@@ -101,7 +101,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
       };
 
     } catch (error) {
-      fastify.log.error('Error fetching agents:', error);
+      fastify.log.error('Error fetching agents: ' + (error instanceof Error ? error.message : String(error)));
       return reply.status(500).send({
         error: 'Internal Server Error',
         message: 'Failed to fetch agent list'
@@ -209,7 +209,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
       };
 
     } catch (error) {
-      fastify.log.error('Error fetching agent details:', error);
+      fastify.log.error('Error fetching agent details: ' + (error instanceof Error ? error.message : String(error)));
       return reply.status(500).send({
         error: 'Internal Server Error',
         message: 'Failed to fetch agent details'

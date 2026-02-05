@@ -1,5 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { getDatabase } from '../db/index.js';
+import { getDatabaseSync } from '../db/index.js';
 import { CONFIG } from '../config.js';
 
 /**
@@ -29,7 +29,7 @@ export async function pairingRateLimit(
   request: FastifyRequest,
   reply: FastifyReply
 ): Promise<void> {
-  const db = getDatabase();
+  const db = getDatabaseSync();
   const clientIP = getClientIP(request);
   
   const maxAttempts = CONFIG.PAIRING_RATE_LIMIT;
@@ -56,7 +56,7 @@ export function createRateLimit(options: {
   message?: string;
 }) {
   return async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
-    const db = getDatabase();
+    const db = getDatabaseSync();
     const clientIP = getClientIP(request);
     
     const allowed = db.checkRateLimit(clientIP, options.maxRequests, options.windowMs);

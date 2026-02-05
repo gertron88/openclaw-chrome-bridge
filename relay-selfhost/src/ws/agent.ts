@@ -1,10 +1,10 @@
 import { FastifyInstance } from 'fastify';
-import { SocketStream } from '@fastify/websocket';
-import { getDatabase } from '../db/index.js';
+import { WebSocket } from 'ws';
+import { getDatabaseSync } from '../db/index.js';
 import { CONFIG } from '../config.js';
 
 export interface AgentConnection {
-  socket: SocketStream;
+  socket: WebSocket;
   agentId: string;
   connectedAt: number;
   lastPing: number;
@@ -26,11 +26,11 @@ export function setRouterFunctions(
 }
 
 export async function setupAgentWebSocket(fastify: FastifyInstance) {
-  const db = getDatabase();
+  const db = getDatabaseSync();
 
   fastify.register(async function (fastify) {
     fastify.get('/ws/agent', { websocket: true }, (connection, request) => {
-      const socket = connection.socket;
+      const socket = connection;
       let agentConnection: AgentConnection | null = null;
       
       // Extract agent_id from query params
@@ -172,7 +172,7 @@ export async function setupAgentWebSocket(fastify: FastifyInstance) {
           }
 
         } catch (error) {
-          fastify.log.error('Error processing agent message:', error);
+          fastify.log.error('Error processing agent message: ' + (error instanceof Error ? error.message : String(error)));
           socket.send(JSON.stringify({
             type: 'error',
             code: 'PROCESSING_ERROR',
@@ -197,8 +197,8 @@ export async function setupAgentWebSocket(fastify: FastifyInstance) {
         }
       });
 
-      socket.on('error', (error) => {
-        fastify.log.error('Agent WebSocket error:', error);
+      socket.on('error', (error: Error) => {
+        fastify.log.error('Agent WebSocket error: ' + error.message);
         if (agentConnection) {
           agentConnections.delete(agentConnection.agentId);
         }
@@ -212,7 +212,7 @@ export async function setupAgentWebSocket(fastify: FastifyInstance) {
  */
 export function sendToAgent(agentId: string, message: any): boolean {
   const connection = agentConnections.get(agentId);
-  if (connection && connection.socket.readyState === 1) { // WebSocket.OPEN
+  if (connection && connection.socket.readyState === WebSocket.OPEN) {
     try {
       connection.socket.send(JSON.stringify(message));
       return true;
@@ -229,7 +229,7 @@ export function sendToAgent(agentId: string, message: any): boolean {
  */
 export function isAgentOnline(agentId: string): boolean {
   const connection = agentConnections.get(agentId);
-  return connection !== undefined && connection.socket.readyState === 1;
+  return connection !== undefined && connection.socket.readyState === WebSocket.OPEN;
 }
 
 /**

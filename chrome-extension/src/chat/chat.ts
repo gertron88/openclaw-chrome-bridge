@@ -88,7 +88,7 @@ class ChatManager {
 
   private async loadAgents(): Promise<void> {
     try {
-      const response = await this.sendMessage({ type: 'get_agents' });
+      const response = await this.sendExtensionMessage({ type: 'get_agents' });
       
       if (response.success) {
         this.agents = response.agents;
@@ -227,7 +227,7 @@ class ChatManager {
 
   private async loadOrCreateSession(agentId: string): Promise<void> {
     try {
-      const response = await this.sendMessage({ 
+      const response = await this.sendExtensionMessage({ 
         type: 'get_sessions',
         agent_id: agentId
       });
@@ -255,7 +255,7 @@ class ChatManager {
     if (!agent) return;
 
     try {
-      const response = await this.sendMessage({
+      const response = await this.sendExtensionMessage({
         type: 'create_session',
         agent_id: agentId,
         agent_name: agent.display_name,
@@ -273,7 +273,7 @@ class ChatManager {
 
   private async loadMessages(sessionId: string): Promise<void> {
     try {
-      const response = await this.sendMessage({
+      const response = await this.sendExtensionMessage({
         type: 'get_messages',
         session_id: sessionId,
       });
@@ -338,7 +338,7 @@ class ChatManager {
     this.handleInputChange();
 
     try {
-      const response = await this.sendMessage({
+      const response = await this.sendExtensionMessage({
         type: 'send_message',
         agent_id: this.currentAgentId,
         session_id: this.currentSessionId,
@@ -477,7 +477,7 @@ class ChatManager {
 
   private async ensureAgentConnection(agentId: string): Promise<void> {
     try {
-      await this.sendMessage({
+      await this.sendExtensionMessage({
         type: 'connect_agent',
         agent_id: agentId,
       });
@@ -525,7 +525,7 @@ class ChatManager {
     
     if (confirmed) {
       try {
-        await this.sendMessage({ type: 'remove_agent', agent_id: agentId });
+        await this.sendExtensionMessage({ type: 'remove_agent', agent_id: agentId });
         
         delete this.agents[agentId];
         
@@ -552,7 +552,7 @@ class ChatManager {
 
   private async openPairingScreen(): Promise<void> {
     try {
-      await this.sendMessage({ type: 'open_pairing' });
+      await this.sendExtensionMessage({ type: 'open_pairing' });
     } catch (error) {
       console.error('Failed to open pairing screen:', error);
     }
@@ -588,7 +588,7 @@ class ChatManager {
     }
   }
 
-  private async sendMessage(message: ExtensionMessage): Promise<any> {
+  private async sendExtensionMessage(message: ExtensionMessage): Promise<any> {
     return new Promise((resolve, reject) => {
       chrome.runtime.sendMessage(message, (response) => {
         if (chrome.runtime.lastError) {

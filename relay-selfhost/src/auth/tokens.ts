@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from 'crypto';
-import { getDatabase } from '../db/index.js';
+import { getDatabaseSync } from '../db/index.js';
 import { signAccessToken, signRefreshToken, verifyRefreshToken, getAccessTokenExpiresIn } from './jwt.js';
 
 /**
@@ -36,7 +36,7 @@ export async function createTokenPair(agentId: string, deviceId: string): Promis
   refreshToken: string;
   expiresIn: number;
 }> {
-  const db = getDatabase();
+  const db = getDatabaseSync();
   
   // Generate tokens
   const refreshTokenValue = generateSecureToken(48);
@@ -79,7 +79,7 @@ export async function refreshAccessToken(refreshToken: string): Promise<{
   refreshToken: string;
   expiresIn: number;
 }> {
-  const db = getDatabase();
+  const db = getDatabaseSync();
   
   // Verify refresh token format
   let payload;
@@ -112,7 +112,7 @@ export async function refreshAccessToken(refreshToken: string): Promise<{
  * Revoke a refresh token
  */
 export async function revokeRefreshToken(refreshToken: string): Promise<void> {
-  const db = getDatabase();
+  const db = getDatabaseSync();
   const tokenHash = hashToken(refreshToken);
   db.revokeRefreshToken(tokenHash);
 }
@@ -121,7 +121,7 @@ export async function revokeRefreshToken(refreshToken: string): Promise<void> {
  * Revoke all refresh tokens for a device
  */
 export async function revokeAllTokensForDevice(deviceId: string): Promise<void> {
-  const db = getDatabase();
+  const db = getDatabaseSync();
   
   // This would require a new database method
   // For now, we'll need to add this to the database class

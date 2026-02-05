@@ -1,4 +1,4 @@
-import Fastify from 'fastify';
+import Fastify, { FastifyInstance } from 'fastify';
 import websocket from '@fastify/websocket';
 import { readFileSync, existsSync } from 'fs';
 import { CONFIG } from './config.js';
@@ -37,7 +37,7 @@ async function createServer() {
         }
       } : undefined
     },
-    https: httpsOptions
+    ...(httpsOptions && { https: httpsOptions })
   });
 
   // Register WebSocket support
@@ -77,7 +77,7 @@ async function createServer() {
 
   // Error handler
   fastify.setErrorHandler(async (error, request, reply) => {
-    fastify.log.error('Request error:', error);
+    fastify.log.error('Request error: ' + (error.message || String(error)));
     
     // Don't expose internal errors in production
     if (CONFIG.IS_PRODUCTION && error.statusCode !== 400 && error.statusCode !== 401 && error.statusCode !== 403 && error.statusCode !== 404) {
@@ -96,7 +96,7 @@ async function createServer() {
   return fastify;
 }
 
-async function gracefulShutdown(fastify: Fastify.FastifyInstance, signal: string) {
+async function gracefulShutdown(fastify: FastifyInstance, signal: string) {
   console.log(`Received ${signal}, starting graceful shutdown...`);
   
   try {
@@ -105,7 +105,7 @@ async function gracefulShutdown(fastify: Fastify.FastifyInstance, signal: string
     
     // Close database
     console.log('Closing database...');
-    getDatabase().close();
+    (await getDatabase()).close();
     
     // Close Fastify server
     await fastify.close();
@@ -125,7 +125,7 @@ async function start() {
     console.log(`Database: ${CONFIG.DB_PATH}`);
     
     // Initialize database
-    const db = getDatabase();
+    const db = await getDatabase();
     console.log('✅ Database initialized');
     
     // Create and start server
