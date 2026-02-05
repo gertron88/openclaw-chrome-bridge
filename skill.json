@@ -49,5 +49,7 @@
   "requirements": {
     "node": ">=18.0.0"
   },
-  "cloudflareRelay": "https://openclaw-chrome-relay.gertron88.workers.dev"
+  "hostedRelayAvailable": true,
+  "hostedRelayUrl": "https://openclaw-chrome-relay.gertron88.workers.dev",
+  "hostedRelayNote": "Free hosted relay available - contact gertron88 for agent credentials"
 }
