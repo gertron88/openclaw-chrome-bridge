@@ -1,6 +1,6 @@
 # Privacy Policy - OpenClaw Chat Bridge
 
-**Last updated:** [Date to be updated before submission]
+**Last updated:** February 5, 2026
 
 ## Overview
 
@@ -133,9 +133,9 @@ We may update this privacy policy to reflect changes in our practices or legal r
 
 For privacy questions or concerns:
 
-**Support:** [Contact information to be updated before submission]
-**Email:** [Email to be updated before submission] 
-**Documentation:** [Website URL to be updated before submission]
+**Support:** https://github.com/gertron88/openclaw-chrome-bridge/issues
+**Email:** gertron88@gmail.com
+**Documentation:** https://github.com/gertron88/openclaw-chrome-bridge
 
 ## Compliance
 
