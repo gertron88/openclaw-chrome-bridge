@@ -30,8 +30,27 @@ class PopupManager {
     });
 
     document.getElementById('settings-btn')?.addEventListener('click', () => {
-      // TODO: Implement settings
-      console.log('Settings clicked');
+      this.openSettings();
+    });
+
+    document.getElementById('settings-backdrop')?.addEventListener('click', () => {
+      this.closeSettings();
+    });
+
+    document.getElementById('cancel-settings-btn')?.addEventListener('click', () => {
+      this.closeSettings();
+    });
+
+    document.getElementById('save-settings-btn')?.addEventListener('click', () => {
+      this.saveSettings();
+    });
+
+    document.getElementById('connection-mode')?.addEventListener('change', () => {
+      this.updateSettingsVisibility();
+    });
+
+    document.getElementById('relay-type')?.addEventListener('change', () => {
+      this.updateSettingsVisibility();
     });
   }
 
@@ -159,6 +178,105 @@ class PopupManager {
     });
 
     return agentItem;
+  }
+
+
+  private async openSettings(): Promise<void> {
+    const modal = document.getElementById('settings-modal');
+    if (!modal) return;
+
+    const stored = await chrome.storage.sync.get([
+      'connection_mode',
+      'relay_configs',
+      'active_relay_config',
+      'local_webui_url',
+    ]);
+
+    const mode = (stored.connection_mode as string) || 'relay';
+    const relayConfigs = stored.relay_configs || {};
+    const activeRelay = (stored.active_relay_config as string) || 'hosted';
+    const activeConfig = relayConfigs[activeRelay] || relayConfigs.hosted || null;
+
+    (document.getElementById('connection-mode') as HTMLSelectElement).value = mode;
+    (document.getElementById('relay-type') as HTMLSelectElement).value = activeConfig?.type === 'custom' ? 'custom' : 'hosted';
+    (document.getElementById('custom-relay-url') as HTMLInputElement).value = activeConfig?.type === 'custom' ? activeConfig.url : '';
+    (document.getElementById('local-webui-url') as HTMLInputElement).value = (stored.local_webui_url as string) || 'http://127.0.0.1:18789/chat?session=agent:main:main';
+
+    this.updateSettingsVisibility();
+    modal.style.display = 'block';
+  }
+
+  private closeSettings(): void {
+    const modal = document.getElementById('settings-modal');
+    if (modal) modal.style.display = 'none';
+  }
+
+  private updateSettingsVisibility(): void {
+    const mode = (document.getElementById('connection-mode') as HTMLSelectElement)?.value || 'relay';
+    const relayType = (document.getElementById('relay-type') as HTMLSelectElement)?.value || 'hosted';
+
+    const relayGroup = document.getElementById('relay-settings-group');
+    const localGroup = document.getElementById('local-settings-group');
+    const customInput = document.getElementById('custom-relay-url') as HTMLInputElement;
+
+    if (relayGroup) relayGroup.style.display = mode === 'relay' ? 'block' : 'none';
+    if (localGroup) localGroup.style.display = mode === 'local_webui' ? 'block' : 'none';
+    if (customInput) customInput.style.display = relayType === 'custom' ? 'block' : 'none';
+  }
+
+  private async saveSettings(): Promise<void> {
+    const mode = (document.getElementById('connection-mode') as HTMLSelectElement).value;
+    const relayType = (document.getElementById('relay-type') as HTMLSelectElement).value;
+    const customRelayUrl = (document.getElementById('custom-relay-url') as HTMLInputElement).value.trim();
+    const localWebUiUrl = (document.getElementById('local-webui-url') as HTMLInputElement).value.trim();
+
+    const stored = await chrome.storage.sync.get('relay_configs');
+    const relayConfigs = stored.relay_configs || {};
+
+    if (mode === 'relay') {
+      if (relayType === 'custom') {
+        if (!customRelayUrl) {
+          alert('Please enter a custom relay URL.');
+          return;
+        }
+
+        relayConfigs[customRelayUrl] = {
+          type: 'custom',
+          url: customRelayUrl,
+          display_name: 'Custom Relay',
+        };
+
+        await chrome.storage.sync.set({
+          relay_configs: relayConfigs,
+          active_relay_config: customRelayUrl,
+          connection_mode: 'relay',
+        });
+      } else {
+        relayConfigs.hosted = {
+          type: 'hosted',
+          url: 'https://openclaw-chrome-relay.gertron88.workers.dev',
+          display_name: 'OpenClaw Hosted',
+        };
+
+        await chrome.storage.sync.set({
+          relay_configs: relayConfigs,
+          active_relay_config: 'hosted',
+          connection_mode: 'relay',
+        });
+      }
+    } else {
+      if (!localWebUiUrl) {
+        alert('Please enter a local web UI URL.');
+        return;
+      }
+
+      await chrome.storage.sync.set({
+        connection_mode: 'local_webui',
+        local_webui_url: localWebUiUrl,
+      });
+    }
+
+    this.closeSettings();
   }
 
   private showLoading(): void {

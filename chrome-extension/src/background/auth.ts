@@ -10,11 +10,28 @@ import {
 export class AuthManager {
   private static readonly TOKEN_REFRESH_BUFFER_MS = 5 * 60 * 1000; // 5 minutes
 
+  private static async getActiveRelayUrl(defaultUrl: string): Promise<string> {
+    const relayConfigs = await SyncStorageManager.getRelayConfigs();
+    const activeResult = await chrome.storage.sync.get('active_relay_config');
+    const activeConfigId = activeResult.active_relay_config as string | undefined;
+
+    if (activeConfigId && relayConfigs[activeConfigId]?.url) {
+      return relayConfigs[activeConfigId].url;
+    }
+
+    if (relayConfigs.hosted?.url) {
+      return relayConfigs.hosted.url;
+    }
+
+    return Object.values(relayConfigs)[0]?.url || defaultUrl;
+  }
+
+
   /**
    * Complete pairing with an agent using pairing code
    */
   static async completePairing(request: PairingRequest): Promise<PairingResponse> {
-    const relayUrl = request.relay_url || 'https://relay.clawdbot.com';
+    const relayUrl = request.relay_url || 'https://openclaw-chrome-relay.gertron88.workers.dev';
     const url = `${relayUrl}/api/pair/complete`;
 
     // Validate request data
@@ -106,8 +123,7 @@ export class AuthManager {
     }
 
     // Get relay URL from stored config or default
-    const relayConfigs = await SyncStorageManager.getRelayConfigs();
-    const relayUrl = Object.values(relayConfigs)[0]?.url || 'https://relay.clawdbot.com';
+    const relayUrl = await this.getActiveRelayUrl('https://openclaw-chrome-relay.gertron88.workers.dev');
     const url = `${relayUrl}/api/token/refresh`;
 
     const validatedRequest = TokenRefreshRequestSchema.parse({
@@ -175,8 +191,7 @@ export class AuthManager {
       throw new Error('Agent not found');
     }
 
-    const relayConfigs = await SyncStorageManager.getRelayConfigs();
-    const relayUrl = Object.values(relayConfigs)[0]?.url || 'https://relay.clawdbot.com';
+    const relayUrl = await this.getActiveRelayUrl('https://openclaw-chrome-relay.gertron88.workers.dev');
     const url = `${relayUrl}/api/agents`;
 
     const response = await fetch(url, {
@@ -223,8 +238,7 @@ export class AuthManager {
       throw new Error('Agent not found');
     }
 
-    const relayConfigs = await SyncStorageManager.getRelayConfigs();
-    const relayUrl = Object.values(relayConfigs)[0]?.url || 'wss://relay.clawdbot.com';
+    const relayUrl = await this.getActiveRelayUrl('wss://openclaw-chrome-relay.gertron88.workers.dev');
     
     // Convert HTTP to WebSocket URL
     const wsUrl = relayUrl.replace(/^https?:/, 'wss:').replace(/^http:/, 'ws:');

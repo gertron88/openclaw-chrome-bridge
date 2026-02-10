@@ -244,7 +244,12 @@ async function handleMessage(
         break;
 
       case 'open_chat':
-        if (!(await openSidePanelPath(sender, 'chat.html'))) {
+        const settings = await chrome.storage.sync.get(['connection_mode', 'local_webui_url']);
+        const connectionMode = settings.connection_mode as string | undefined;
+
+        if (connectionMode === 'local_webui' && settings.local_webui_url) {
+          chrome.tabs.create({ url: settings.local_webui_url });
+        } else if (!(await openSidePanelPath(sender, 'chat.html'))) {
           chrome.tabs.create({ url: chrome.runtime.getURL('chat.html') });
         }
         sendResponse({ success: true });

@@ -134,7 +134,7 @@ export function validateOutgoingMessage(data: unknown): OutgoingMessage {
 
 // Constants
 export const MESSAGE_SIZE_LIMIT = 32000; // 32KB
-export const DEFAULT_RELAY_URL = 'wss://relay.clawdbot.com';
+export const DEFAULT_RELAY_URL = 'wss://openclaw-chrome-relay.gertron88.workers.dev';
 export const AUTH_HEADER = 'Authorization';
 export const WEBSOCKET_TIMEOUT = 30000; // 30s
 export const RECONNECT_DELAY = 5000; // 5s

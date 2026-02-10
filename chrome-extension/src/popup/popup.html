@@ -77,5 +77,41 @@
       </div>
     </div>
   </template>
+
+
+  <div id="settings-modal" class="settings-modal" style="display: none;">
+    <div class="settings-backdrop" id="settings-backdrop"></div>
+    <div class="settings-panel">
+      <h3>Connection Settings</h3>
+
+      <label class="settings-label" for="connection-mode">Mode</label>
+      <select id="connection-mode" class="settings-input">
+        <option value="relay">Relay (recommended)</option>
+        <option value="local_webui">Local Web UI</option>
+      </select>
+
+      <div id="relay-settings-group">
+        <label class="settings-label" for="relay-type">Relay Type</label>
+        <select id="relay-type" class="settings-input">
+          <option value="hosted">Hosted Relay</option>
+          <option value="custom">Custom Relay</option>
+        </select>
+
+        <label class="settings-label" for="custom-relay-url">Custom Relay URL</label>
+        <input id="custom-relay-url" class="settings-input" type="url" placeholder="https://your-relay.example.com" />
+      </div>
+
+      <div id="local-settings-group" style="display: none;">
+        <label class="settings-label" for="local-webui-url">Local Web UI URL</label>
+        <input id="local-webui-url" class="settings-input" type="url" placeholder="http://127.0.0.1:18789/chat?session=agent:main:main" />
+      </div>
+
+      <div class="settings-actions">
+        <button id="cancel-settings-btn" class="btn btn-secondary">Cancel</button>
+        <button id="save-settings-btn" class="btn btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>

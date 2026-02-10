@@ -303,3 +303,54 @@ body {
 .popup-content::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
 }
+.settings-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+}
+
+.settings-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.settings-panel {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(92%, 340px);
+  background: #fff;
+  border-radius: 10px;
+  padding: 16px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+}
+
+.settings-panel h3 {
+  margin-bottom: 10px;
+  color: #2c3e50;
+}
+
+.settings-label {
+  display: block;
+  font-size: 12px;
+  margin-top: 10px;
+  margin-bottom: 4px;
+  color: #6c757d;
+}
+
+.settings-input {
+  width: 100%;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 13px;
+}
+
+.settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}

@@ -235,7 +235,7 @@ class PairingManager {
       // Store relay configuration
       const relayConfig: RelayConfig = {
         type: this.relayMode,
-        url: this.relayMode === 'custom' ? this.relayUrl : 'https://relay.clawdbot.com',
+        url: this.relayMode === 'custom' ? this.relayUrl : 'https://openclaw-chrome-relay.gertron88.workers.dev',
         display_name: this.relayMode === 'custom' ? 'Custom Relay' : 'OpenClaw Hosted',
       };
 
@@ -253,7 +253,11 @@ class PairingManager {
         const relayConfigId = relayConfig.type === 'hosted' ? 'hosted' : relayConfig.url;
         relayConfigs[relayConfigId] = relayConfig;
 
-        await chrome.storage.sync.set({ relay_configs: relayConfigs });
+        await chrome.storage.sync.set({
+          relay_configs: relayConfigs,
+          active_relay_config: relayConfigId,
+          connection_mode: 'relay',
+        });
 
         // Pre-select the newly paired agent so chat opens ready to message
         await chrome.storage.session.set({

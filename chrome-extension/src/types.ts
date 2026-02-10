@@ -53,7 +53,7 @@ export interface PairingResponse {
 
 // Relay configuration
 export interface RelayConfig {
-  type: 'hosted' | 'custom';
+  type: 'hosted' | 'custom' | 'local_webui';
   url: string;
   display_name: string;
 }
