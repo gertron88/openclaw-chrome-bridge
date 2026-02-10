@@ -81,16 +81,21 @@ async function openSidePanelPath(
     return false;
   }
 
-  if (target.tabId !== undefined && chrome.sidePanel.setOptions) {
-    await chrome.sidePanel.setOptions({
-      tabId: target.tabId,
-      path,
-      enabled: true,
-    });
-  }
+  try {
+    if (target.tabId !== undefined && chrome.sidePanel.setOptions) {
+      await chrome.sidePanel.setOptions({
+        tabId: target.tabId,
+        path,
+        enabled: true,
+      });
+    }
 
-  await chrome.sidePanel.open({ windowId: target.windowId });
-  return true;
+    await chrome.sidePanel.open({ windowId: target.windowId });
+    return true;
+  } catch (error) {
+    console.warn('Unable to open side panel path, will use fallback navigation:', error);
+    return false;
+  }
 }
 
 // Handle messages from UI components

@@ -535,12 +535,9 @@ class ChatManager {
   }
 
   private async openPairingScreen(): Promise<void> {
-    try {
-      window.location.href = chrome.runtime.getURL('pairing.html');
-    } catch (error) {
-      console.error('Failed to open pairing screen:', error);
-      await this.sendExtensionMessage({ type: 'open_pairing' });
-    }
+    // When already in the extension side panel, navigate in-place to avoid
+    // service worker sidePanel.open() gesture restrictions.
+    window.location.href = chrome.runtime.getURL('pairing.html');
   }
 
 
