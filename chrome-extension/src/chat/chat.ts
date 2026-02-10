@@ -30,6 +30,7 @@ class ChatManager {
     await this.loadAgents();
     await this.restoreSelectedAgent();
     this.setupAutoResize();
+    this.setInitialLayout();
     await this.renderDashboards();
   }
 
@@ -500,9 +501,17 @@ class ChatManager {
 
   private async openPairingScreen(): Promise<void> {
     try {
-      await this.sendExtensionMessage({ type: 'open_pairing' });
+      window.location.href = chrome.runtime.getURL('pairing.html');
     } catch (error) {
       console.error('Failed to open pairing screen:', error);
+      await this.sendExtensionMessage({ type: 'open_pairing' });
+    }
+  }
+
+
+  private setInitialLayout(): void {
+    if (window.innerWidth <= 500 && !this.sidebarCollapsed) {
+      this.toggleSidebar();
     }
   }
 

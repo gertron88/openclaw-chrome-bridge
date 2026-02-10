@@ -82,6 +82,10 @@ class PairingManager {
       this.resetToStart();
     });
 
+    document.getElementById('back-to-chat-top')?.addEventListener('click', () => {
+      this.openChat();
+    });
+
     // Help links
     document.getElementById('help-link')?.addEventListener('click', (e) => {
       e.preventDefault();
@@ -303,9 +307,10 @@ class PairingManager {
   private async openChat(): Promise<void> {
     try {
       await this.sendMessage({ type: 'open_chat' });
-      window.close();
+      window.location.href = chrome.runtime.getURL('chat.html');
     } catch (error) {
       console.error('Failed to open chat:', error);
+      window.location.href = chrome.runtime.getURL('chat.html');
     }
   }
 
