@@ -24,6 +24,11 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     delayInMinutes: 5, // Run every 5 minutes
     periodInMinutes: 5
   });
+
+  // Prefer the Chrome side panel for chat workflows
+  if (chrome.sidePanel?.setPanelBehavior) {
+    await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+  }
 });
 
 // Handle alarms
@@ -191,9 +196,15 @@ async function handleMessage(
         break;
 
       case 'open_chat':
-        // Open chat in side panel or new tab
-        if (chrome.sidePanel && sender.tab?.windowId) {
-          await chrome.sidePanel.open({ windowId: sender.tab.windowId });
+        // Open chat in side panel when available
+        if (chrome.sidePanel) {
+          const windowId = sender.tab?.windowId ?? (await chrome.windows.getLastFocused()).id;
+
+          if (windowId !== undefined) {
+            await chrome.sidePanel.open({ windowId });
+          } else {
+            chrome.tabs.create({ url: chrome.runtime.getURL('chat.html') });
+          }
         } else {
           // Fallback to new tab
           chrome.tabs.create({ url: chrome.runtime.getURL('chat.html') });
