@@ -26,7 +26,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
+  min-height: 52px;
+  padding: 10px 16px;
   border-bottom: 1px solid #e1e5e9;
 }
 .sidebar-header h2 { font-size: 18px; font-weight: 600; color: #2c3e50; }
