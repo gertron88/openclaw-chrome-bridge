@@ -1,6 +1,15 @@
 import './chat.css';
 import { Agent, Session, ChatMessage, ExtensionMessage, ConnectionStatusEvent, NewMessageEvent, AgentStatusEvent } from '@/types';
-import { createSessionId, createRequestId } from '@/lib/storage';
+
+type WorkspaceView = 'chat' | 'subagents' | 'cron';
+
+type AgentDashboardStats = {
+  id: string;
+  name: string;
+  online: boolean;
+  sessionCount: number;
+  lastActivity?: string;
+};
 
 class ChatManager {
   private agents: Record<string, Agent> = {};
@@ -9,6 +18,7 @@ class ChatManager {
   private messages: ChatMessage[] = [];
   private isTyping = false;
   private sidebarCollapsed = false;
+  private currentView: WorkspaceView = 'chat';
 
   constructor() {
     this.init();
@@ -20,44 +30,30 @@ class ChatManager {
     await this.loadAgents();
     await this.restoreSelectedAgent();
     this.setupAutoResize();
+    await this.renderDashboards();
   }
 
   private bindEvents(): void {
-    // Sidebar controls
-    document.getElementById('collapse-sidebar')?.addEventListener('click', () => {
-      this.toggleSidebar();
+    document.getElementById('collapse-sidebar')?.addEventListener('click', () => this.toggleSidebar());
+    document.getElementById('expand-sidebar')?.addEventListener('click', () => this.toggleSidebar());
+
+    document.querySelectorAll('.view-tab').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        const view = (tab as HTMLElement).dataset.view as WorkspaceView;
+        this.switchView(view);
+      });
     });
 
-    document.getElementById('expand-sidebar')?.addEventListener('click', () => {
-      this.toggleSidebar();
-    });
+    document.getElementById('pair-new-agent')?.addEventListener('click', () => this.openPairingScreen());
+    document.getElementById('pair-first-agent')?.addEventListener('click', () => this.openPairingScreen());
 
-    // Agent actions
-    document.getElementById('pair-new-agent')?.addEventListener('click', () => {
-      this.openPairingScreen();
-    });
+    document.getElementById('new-session')?.addEventListener('click', () => this.startNewSession());
+    document.getElementById('clear-chat')?.addEventListener('click', () => this.clearCurrentChat());
 
-    document.getElementById('pair-first-agent')?.addEventListener('click', () => {
-      this.openPairingScreen();
-    });
-
-    // Chat actions
-    document.getElementById('new-session')?.addEventListener('click', () => {
-      this.startNewSession();
-    });
-
-    document.getElementById('clear-chat')?.addEventListener('click', () => {
-      this.clearCurrentChat();
-    });
-
-    // Message input
     const messageInput = document.getElementById('message-input') as HTMLTextAreaElement;
     const sendButton = document.getElementById('send-button') as HTMLButtonElement;
 
-    messageInput?.addEventListener('input', () => {
-      this.handleInputChange();
-    });
-
+    messageInput?.addEventListener('input', () => this.handleInputChange());
     messageInput?.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
@@ -65,9 +61,19 @@ class ChatManager {
       }
     });
 
-    sendButton?.addEventListener('click', () => {
-      this.sendMessage();
+    sendButton?.addEventListener('click', () => this.sendMessage());
+  }
+
+  private switchView(view: WorkspaceView): void {
+    this.currentView = view;
+
+    document.querySelectorAll('.view-tab').forEach((tab) => {
+      tab.classList.toggle('active', (tab as HTMLElement).dataset.view === view);
     });
+
+    document.getElementById('view-chat')?.classList.toggle('active', view === 'chat');
+    document.getElementById('view-subagents')?.classList.toggle('active', view === 'subagents');
+    document.getElementById('view-cron')?.classList.toggle('active', view === 'cron');
   }
 
   private setupMessageListener(): void {
@@ -89,11 +95,9 @@ class ChatManager {
   private async loadAgents(): Promise<void> {
     try {
       const response = await this.sendExtensionMessage({ type: 'get_agents' });
-      
       if (response.success) {
         this.agents = response.agents;
         this.renderAgentsList();
-        
         if (Object.keys(this.agents).length === 0) {
           this.showEmptyState();
         }
@@ -107,7 +111,6 @@ class ChatManager {
     try {
       const result = await chrome.storage.session.get(['selected_agent_id']);
       const agentId = result.selected_agent_id;
-      
       if (agentId && this.agents[agentId]) {
         this.selectAgent(agentId);
       }
@@ -121,10 +124,8 @@ class ChatManager {
     if (!agentsList) return;
 
     agentsList.innerHTML = '';
-
     Object.entries(this.agents).forEach(([agentId, agent]) => {
-      const agentElement = this.createAgentListItem(agentId, agent);
-      agentsList.appendChild(agentElement);
+      agentsList.appendChild(this.createAgentListItem(agentId, agent));
     });
   }
 
@@ -134,25 +135,15 @@ class ChatManager {
     const agentItem = clone.querySelector('.agent-list-item') as HTMLElement;
 
     agentItem.dataset.agentId = agentId;
+    (clone.querySelector('.agent-name') as HTMLElement).textContent = agent.display_name;
 
-    // Set agent name
-    const agentName = clone.querySelector('.agent-name') as HTMLElement;
-    agentName.textContent = agent.display_name;
-
-    // Set status
     const agentStatus = clone.querySelector('.agent-status') as HTMLElement;
-    if (agent.online) {
-      agentStatus.classList.add('online');
-    }
+    if (agent.online) agentStatus.classList.add('online');
 
-    // Set last message placeholder
     const lastMessage = clone.querySelector('.agent-last-message') as HTMLElement;
     lastMessage.textContent = agent.online ? 'Online' : 'Offline';
 
-    // Bind events
-    agentItem.addEventListener('click', () => {
-      this.selectAgent(agentId);
-    });
+    agentItem.addEventListener('click', () => this.selectAgent(agentId));
 
     const removeBtn = clone.querySelector('.remove-agent') as HTMLElement;
     removeBtn.addEventListener('click', (e) => {
@@ -168,30 +159,21 @@ class ChatManager {
 
     const agent = this.agents[agentId];
     this.currentAgentId = agentId;
-
-    // Store selection
     await chrome.storage.session.set({ selected_agent_id: agentId });
 
-    // Update UI
     this.updateAgentSelection();
     this.updateChatHeader(agent);
     this.showChatInterface();
-    
-    // Create or load session
+
     await this.loadOrCreateSession(agentId);
-    
-    // Connect agent if not connected
     this.ensureAgentConnection(agentId);
+    this.switchView('chat');
   }
 
   private updateAgentSelection(): void {
-    document.querySelectorAll('.agent-list-item').forEach(item => {
-      item.classList.remove('active');
-    });
-
+    document.querySelectorAll('.agent-list-item').forEach((item) => item.classList.remove('active'));
     if (this.currentAgentId) {
-      const activeItem = document.querySelector(`[data-agent-id="${this.currentAgentId}"]`);
-      activeItem?.classList.add('active');
+      document.querySelector(`[data-agent-id="${this.currentAgentId}"]`)?.classList.add('active');
     }
   }
 
@@ -201,14 +183,12 @@ class ChatManager {
     const agentStatusText = document.getElementById('current-agent-status-text');
 
     if (agentName) agentName.textContent = agent.display_name;
-    
+
     if (agentStatus) {
       agentStatus.className = 'agent-status';
-      if (agent.online) {
-        agentStatus.classList.add('online');
-      }
+      if (agent.online) agentStatus.classList.add('online');
     }
-    
+
     if (agentStatusText) {
       agentStatusText.textContent = agent.online ? 'Online' : 'Offline';
       agentStatusText.className = agent.online ? 'online' : '';
@@ -227,21 +207,16 @@ class ChatManager {
 
   private async loadOrCreateSession(agentId: string): Promise<void> {
     try {
-      const response = await this.sendExtensionMessage({ 
-        type: 'get_sessions',
-        agent_id: agentId
-      });
+      const response = await this.sendExtensionMessage({ type: 'get_sessions', agent_id: agentId });
 
       if (response.success && response.sessions.length > 0) {
-        // Use the most recent session
-        const latestSession = response.sessions.sort((a: Session, b: Session) => 
+        const latestSession = response.sessions.sort((a: Session, b: Session) =>
           new Date(b.last_activity).getTime() - new Date(a.last_activity).getTime()
         )[0];
-        
+
         this.currentSessionId = latestSession.id;
         await this.loadMessages(latestSession.id);
       } else {
-        // Create new session
         await this.createNewSession(agentId);
       }
     } catch (error) {
@@ -265,6 +240,7 @@ class ChatManager {
         this.currentSessionId = response.session.id;
         this.messages = [];
         this.renderMessages();
+        await this.renderDashboards();
       }
     } catch (error) {
       console.error('Failed to create session:', error);
@@ -273,11 +249,7 @@ class ChatManager {
 
   private async loadMessages(sessionId: string): Promise<void> {
     try {
-      const response = await this.sendExtensionMessage({
-        type: 'get_messages',
-        session_id: sessionId,
-      });
-
+      const response = await this.sendExtensionMessage({ type: 'get_messages', session_id: sessionId });
       if (response.success) {
         this.messages = response.messages;
         this.renderMessages();
@@ -293,12 +265,7 @@ class ChatManager {
     if (!messagesList) return;
 
     messagesList.innerHTML = '';
-
-    this.messages.forEach(message => {
-      const messageElement = this.createMessageElement(message);
-      messagesList.appendChild(messageElement);
-    });
-
+    this.messages.forEach((message) => messagesList.appendChild(this.createMessageElement(message)));
     this.scrollToBottom();
   }
 
@@ -311,11 +278,8 @@ class ChatManager {
     messageElement.dataset.type = message.type;
     messageElement.classList.add(`${message.type}-message`);
 
-    const messageText = clone.querySelector('.message-text') as HTMLElement;
-    messageText.textContent = message.text;
-
-    const messageTime = clone.querySelector('.message-time') as HTMLElement;
-    messageTime.textContent = this.formatTime(message.timestamp);
+    (clone.querySelector('.message-text') as HTMLElement).textContent = message.text;
+    (clone.querySelector('.message-time') as HTMLElement).textContent = this.formatTime(message.timestamp);
 
     const messageStatus = clone.querySelector('.message-status') as HTMLElement;
     if (message.type === 'request' && message.status) {
@@ -333,7 +297,6 @@ class ChatManager {
 
     if (!text || !this.currentAgentId || !this.currentSessionId) return;
 
-    // Clear input immediately
     messageInput.value = '';
     this.handleInputChange();
 
@@ -342,11 +305,10 @@ class ChatManager {
         type: 'send_message',
         agent_id: this.currentAgentId,
         session_id: this.currentSessionId,
-        text: text,
+        text,
       });
 
       if (response.success) {
-        // Message will be added via the message listener
         this.showTypingIndicator();
       } else {
         console.error('Failed to send message:', response.error);
@@ -363,9 +325,8 @@ class ChatManager {
     const hasText = messageInput.value.trim().length > 0;
     sendButton.disabled = !hasText;
 
-    // Auto-resize textarea
     messageInput.style.height = 'auto';
-    messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
+    messageInput.style.height = `${Math.min(messageInput.scrollHeight, 120)}px`;
   }
 
   private showTypingIndicator(): void {
@@ -384,10 +345,8 @@ class ChatManager {
 
   private hideTypingIndicator(): void {
     if (!this.isTyping) return;
-
     this.isTyping = false;
-    const typingIndicator = document.querySelector('.typing-indicator');
-    typingIndicator?.remove();
+    document.querySelector('.typing-indicator')?.remove();
   }
 
   private handleConnectionStatus(event: ConnectionStatusEvent): void {
@@ -396,36 +355,29 @@ class ChatManager {
     }
   }
 
-  private handleNewMessage(event: NewMessageEvent): void {
+  private async handleNewMessage(event: NewMessageEvent): Promise<void> {
     const message = event.message;
-    
-    if (message.session_id === this.currentSessionId) {
-      // Hide typing indicator if this is a response
-      if (message.type === 'response') {
-        this.hideTypingIndicator();
-      }
 
-      // Add message to current view
+    if (message.session_id === this.currentSessionId) {
+      if (message.type === 'response') this.hideTypingIndicator();
       this.messages.push(message);
-      const messageElement = this.createMessageElement(message);
-      document.getElementById('messages-list')?.appendChild(messageElement);
+      document.getElementById('messages-list')?.appendChild(this.createMessageElement(message));
       this.scrollToBottom();
     }
 
-    // Update agent last message preview
     this.updateAgentLastMessage(message.agent_id, message.text);
+    await this.renderDashboards();
   }
 
-  private handleAgentStatus(event: AgentStatusEvent): void {
+  private async handleAgentStatus(event: AgentStatusEvent): Promise<void> {
     if (this.agents[event.agent_id]) {
       this.agents[event.agent_id].online = event.online;
-      
-      // Update agent list item
+
       const agentItem = document.querySelector(`[data-agent-id="${event.agent_id}"]`);
       if (agentItem) {
         const statusElement = agentItem.querySelector('.agent-status') as HTMLElement;
         const lastMessage = agentItem.querySelector('.agent-last-message') as HTMLElement;
-        
+
         if (event.online) {
           statusElement.classList.add('online');
           lastMessage.textContent = 'Online';
@@ -435,10 +387,11 @@ class ChatManager {
         }
       }
 
-      // Update chat header if this is the current agent
       if (event.agent_id === this.currentAgentId) {
         this.updateChatHeader(this.agents[event.agent_id]);
       }
+
+      await this.renderDashboards();
     }
   }
 
@@ -446,24 +399,24 @@ class ChatManager {
     const statusIndicator = document.querySelector('.status-indicator') as HTMLElement;
     const statusText = document.querySelector('.status-text') as HTMLElement;
 
-    if (statusIndicator && statusText) {
-      statusIndicator.className = 'status-indicator';
-      
-      switch (status) {
-        case 'connected':
-          statusIndicator.classList.add('online');
-          statusText.textContent = 'Connected';
-          break;
-        case 'connecting':
-          statusIndicator.classList.add('connecting');
-          statusText.textContent = 'Connecting...';
-          break;
-        case 'error':
-          statusText.textContent = 'Connection Error';
-          break;
-        default:
-          statusText.textContent = 'Disconnected';
-      }
+    if (!statusIndicator || !statusText) return;
+
+    statusIndicator.className = 'status-indicator';
+
+    switch (status) {
+      case 'connected':
+        statusIndicator.classList.add('online');
+        statusText.textContent = 'Connected';
+        break;
+      case 'connecting':
+        statusIndicator.classList.add('connecting');
+        statusText.textContent = 'Connecting...';
+        break;
+      case 'error':
+        statusText.textContent = 'Connection Error';
+        break;
+      default:
+        statusText.textContent = 'Disconnected';
     }
   }
 
@@ -471,16 +424,13 @@ class ChatManager {
     const agentItem = document.querySelector(`[data-agent-id="${agentId}"]`);
     if (agentItem) {
       const lastMessage = agentItem.querySelector('.agent-last-message') as HTMLElement;
-      lastMessage.textContent = text.length > 50 ? text.substring(0, 50) + '...' : text;
+      lastMessage.textContent = text.length > 50 ? `${text.substring(0, 50)}...` : text;
     }
   }
 
   private async ensureAgentConnection(agentId: string): Promise<void> {
     try {
-      await this.sendExtensionMessage({
-        type: 'connect_agent',
-        agent_id: agentId,
-      });
+      await this.sendExtensionMessage({ type: 'connect_agent', agent_id: agentId });
     } catch (error) {
       console.error('Failed to connect agent:', error);
     }
@@ -489,11 +439,11 @@ class ChatManager {
   private toggleSidebar(): void {
     const sidebar = document.getElementById('sidebar');
     const expandButton = document.getElementById('expand-sidebar');
-    
+
     if (!sidebar) return;
 
     this.sidebarCollapsed = !this.sidebarCollapsed;
-    
+
     if (this.sidebarCollapsed) {
       sidebar.classList.add('collapsed');
       if (expandButton) expandButton.style.display = 'block';
@@ -505,48 +455,46 @@ class ChatManager {
 
   private async startNewSession(): Promise<void> {
     if (!this.currentAgentId) return;
-    
     await this.createNewSession(this.currentAgentId);
   }
 
   private async clearCurrentChat(): Promise<void> {
-    if (!this.currentSessionId) return;
+    if (!this.currentSessionId || !this.currentAgentId) return;
 
     const confirmed = confirm('Clear current chat? This cannot be undone.');
     if (confirmed) {
       this.messages = [];
       this.renderMessages();
-      await this.createNewSession(this.currentAgentId!);
+      await this.createNewSession(this.currentAgentId);
     }
   }
 
   private async removeAgent(agentId: string, agentName: string): Promise<void> {
     const confirmed = confirm(`Remove agent "${agentName}"? This will disconnect and remove all local chat history.`);
-    
-    if (confirmed) {
-      try {
-        await this.sendExtensionMessage({ type: 'remove_agent', agent_id: agentId });
-        
-        delete this.agents[agentId];
-        
-        if (this.currentAgentId === agentId) {
-          this.currentAgentId = null;
-          this.currentSessionId = null;
-          
-          // Select another agent or show empty state
-          const remainingAgents = Object.keys(this.agents);
-          if (remainingAgents.length > 0) {
-            this.selectAgent(remainingAgents[0]);
-          } else {
-            this.showEmptyState();
-          }
+    if (!confirmed) return;
+
+    try {
+      await this.sendExtensionMessage({ type: 'remove_agent', agent_id: agentId });
+
+      delete this.agents[agentId];
+
+      if (this.currentAgentId === agentId) {
+        this.currentAgentId = null;
+        this.currentSessionId = null;
+
+        const remainingAgents = Object.keys(this.agents);
+        if (remainingAgents.length > 0) {
+          this.selectAgent(remainingAgents[0]);
+        } else {
+          this.showEmptyState();
         }
-        
-        this.renderAgentsList();
-      } catch (error) {
-        console.error('Failed to remove agent:', error);
-        alert('Failed to remove agent. Please try again.');
       }
+
+      this.renderAgentsList();
+      await this.renderDashboards();
+    } catch (error) {
+      console.error('Failed to remove agent:', error);
+      alert('Failed to remove agent. Please try again.');
     }
   }
 
@@ -559,7 +507,6 @@ class ChatManager {
   }
 
   private setupAutoResize(): void {
-    // Auto-resize text area
     const messageInput = document.getElementById('message-input') as HTMLTextAreaElement;
     if (messageInput) {
       messageInput.addEventListener('input', this.handleInputChange.bind(this));
@@ -579,13 +526,12 @@ class ChatManager {
     const date = new Date(timestamp);
     const now = new Date();
     const isToday = date.toDateString() === now.toDateString();
-    
+
     if (isToday) {
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } else {
-      return date.toLocaleDateString([], { month: 'short', day: 'numeric' }) + 
-             ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
+
+    return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })} ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
   }
 
   private async sendExtensionMessage(message: ExtensionMessage): Promise<any> {
@@ -599,9 +545,111 @@ class ChatManager {
       });
     });
   }
+
+  private async getAgentSessionStats(): Promise<AgentDashboardStats[]> {
+    const entries = Object.entries(this.agents);
+    const stats = await Promise.all(entries.map(async ([agentId, agent]) => {
+      try {
+        const response = await this.sendExtensionMessage({ type: 'get_sessions', agent_id: agentId });
+        const sessions: Session[] = response.success ? response.sessions : [];
+
+        const latest = sessions
+          .map((session) => session.last_activity)
+          .filter(Boolean)
+          .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
+
+        return {
+          id: agentId,
+          name: agent.display_name,
+          online: agent.online,
+          sessionCount: sessions.length,
+          lastActivity: latest,
+        };
+      } catch {
+        return {
+          id: agentId,
+          name: agent.display_name,
+          online: agent.online,
+          sessionCount: 0,
+        };
+      }
+    }));
+
+    return stats;
+  }
+
+  private async renderDashboards(): Promise<void> {
+    const stats = await this.getAgentSessionStats();
+    this.renderSubagentDashboard(stats);
+    this.renderCronDashboard(stats);
+  }
+
+  private renderSubagentDashboard(stats: AgentDashboardStats[]): void {
+    const summaryEl = document.getElementById('subagent-summary');
+    const tableEl = document.getElementById('subagent-table');
+    if (!summaryEl || !tableEl) return;
+
+    const utilized = stats.filter((item) => item.sessionCount > 0).length;
+    const online = stats.filter((item) => item.online).length;
+
+    summaryEl.innerHTML = `
+      <article class="dashboard-card"><div class="dashboard-card-label">Created Subagents</div><div class="dashboard-card-value">${stats.length}</div></article>
+      <article class="dashboard-card"><div class="dashboard-card-label">Utilized Subagents</div><div class="dashboard-card-value">${utilized}</div></article>
+      <article class="dashboard-card"><div class="dashboard-card-label">Online Right Now</div><div class="dashboard-card-value">${online}</div></article>
+    `;
+
+    if (stats.length === 0) {
+      tableEl.innerHTML = '<div class="dashboard-empty">No subagents paired yet. Pair an agent to populate this dashboard.</div>';
+      return;
+    }
+
+    tableEl.innerHTML = stats
+      .sort((a, b) => Number(b.online) - Number(a.online))
+      .map((item) => `
+        <div class="dashboard-row">
+          <div>
+            <strong>${item.name}</strong>
+            <div class="dashboard-row-meta">Sessions: ${item.sessionCount}${item.lastActivity ? ` · Last activity: ${this.formatTime(item.lastActivity)}` : ''}</div>
+          </div>
+          <span class="badge ${item.online ? 'online' : 'offline'}">${item.online ? 'Online' : 'Offline'}</span>
+        </div>
+      `)
+      .join('');
+  }
+
+  private renderCronDashboard(stats: AgentDashboardStats[]): void {
+    const summaryEl = document.getElementById('cron-summary');
+    const tableEl = document.getElementById('cron-table');
+    if (!summaryEl || !tableEl) return;
+
+    const cronAgents = stats.filter((item) => /cron|schedule|job/i.test(item.name));
+    const running = cronAgents.filter((item) => item.online).length;
+
+    summaryEl.innerHTML = `
+      <article class="dashboard-card"><div class="dashboard-card-label">Cron Agents</div><div class="dashboard-card-value">${cronAgents.length}</div></article>
+      <article class="dashboard-card"><div class="dashboard-card-label">Running</div><div class="dashboard-card-value">${running}</div></article>
+      <article class="dashboard-card"><div class="dashboard-card-label">Idle/Offline</div><div class="dashboard-card-value">${Math.max(cronAgents.length - running, 0)}</div></article>
+    `;
+
+    if (cronAgents.length === 0) {
+      tableEl.innerHTML = '<div class="dashboard-empty">No cron-job agents detected. Name an agent with "cron", "schedule", or "job" to track it here.</div>';
+      return;
+    }
+
+    tableEl.innerHTML = cronAgents
+      .map((item) => `
+        <div class="dashboard-row">
+          <div>
+            <strong>${item.name}</strong>
+            <div class="dashboard-row-meta">Sessions: ${item.sessionCount}${item.lastActivity ? ` · Last run: ${this.formatTime(item.lastActivity)}` : ''}</div>
+          </div>
+          <span class="badge ${item.online ? 'online' : 'offline'}">${item.online ? 'Running' : 'Idle'}</span>
+        </div>
+      `)
+      .join('');
+  }
 }
 
-// Initialize chat when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
   new ChatManager();
 });

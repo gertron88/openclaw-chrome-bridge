@@ -247,12 +247,21 @@ class PairingManager {
       });
 
       if (response.success) {
-        // Store relay config
-        await chrome.storage.sync.set({
-          relay_config: relayConfig,
+        // Store relay config under the expected sync key
+        const existing = await chrome.storage.sync.get('relay_configs');
+        const relayConfigs = existing.relay_configs || {};
+        const relayConfigId = relayConfig.type === 'hosted' ? 'hosted' : relayConfig.url;
+        relayConfigs[relayConfigId] = relayConfig;
+
+        await chrome.storage.sync.set({ relay_configs: relayConfigs });
+
+        // Pre-select the newly paired agent so chat opens ready to message
+        await chrome.storage.session.set({
+          selected_agent_id: response.result.agent_id,
+          selected_agent_name: response.result.agent_display_name,
         });
 
-        this.showPairingSuccess(response.result.agent_display_name);
+        this.showPairingSuccess(response.result.agent_display_name, response.result.agent_id);
       } else {
         this.showPairingError(response.error || 'Unknown error occurred');
       }
@@ -262,11 +271,13 @@ class PairingManager {
     }
   }
 
-  private showPairingSuccess(agentName: string): void {
+  private showPairingSuccess(agentName: string, agentId: string): void {
     const successAgentName = document.getElementById('success-agent-name');
     if (successAgentName) {
       successAgentName.textContent = agentName;
     }
+
+    document.body.setAttribute('data-paired-agent-id', agentId);
     this.goToStep('step-success');
   }
 

@@ -199,5 +199,5 @@ export function createSessionId(agentId: string): string {
 }
 
 export function createRequestId(): string {
-  return `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  return `req_${Date.now()}_${crypto.randomUUID()}`;
 }

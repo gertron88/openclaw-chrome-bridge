@@ -24,6 +24,11 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     delayInMinutes: 5, // Run every 5 minutes
     periodInMinutes: 5
   });
+
+  // Prefer the Chrome side panel for chat workflows
+  if (chrome.sidePanel?.setPanelBehavior) {
+    await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+  }
 });
 
 // Handle alarms
@@ -39,6 +44,54 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
       break;
   }
 });
+
+
+async function getPreferredPanelTarget(sender: chrome.runtime.MessageSender): Promise<{ windowId: number; tabId?: number } | null> {
+  const senderWindowId = sender.tab?.windowId;
+  const senderTabId = sender.tab?.id;
+
+  if (senderWindowId !== undefined) {
+    return { windowId: senderWindowId, tabId: senderTabId };
+  }
+
+  const focusedWindow = await chrome.windows.getLastFocused();
+  if (!focusedWindow.id) {
+    return null;
+  }
+
+  const tabs = await chrome.tabs.query({ windowId: focusedWindow.id, active: true });
+  const activeTab = tabs[0];
+
+  return {
+    windowId: focusedWindow.id,
+    tabId: activeTab?.id,
+  };
+}
+
+async function openSidePanelPath(
+  sender: chrome.runtime.MessageSender,
+  path: string
+): Promise<boolean> {
+  if (!chrome.sidePanel) {
+    return false;
+  }
+
+  const target = await getPreferredPanelTarget(sender);
+  if (!target) {
+    return false;
+  }
+
+  if (target.tabId !== undefined && chrome.sidePanel.setOptions) {
+    await chrome.sidePanel.setOptions({
+      tabId: target.tabId,
+      path,
+      enabled: true,
+    });
+  }
+
+  await chrome.sidePanel.open({ windowId: target.windowId });
+  return true;
+}
 
 // Handle messages from UI components
 chrome.runtime.onMessage.addListener((request: ExtensionMessage, sender, sendResponse) => {
@@ -191,18 +244,16 @@ async function handleMessage(
         break;
 
       case 'open_chat':
-        // Open chat in side panel or new tab
-        if (chrome.sidePanel && sender.tab?.windowId) {
-          await chrome.sidePanel.open({ windowId: sender.tab.windowId });
-        } else {
-          // Fallback to new tab
+        if (!(await openSidePanelPath(sender, 'chat.html'))) {
           chrome.tabs.create({ url: chrome.runtime.getURL('chat.html') });
         }
         sendResponse({ success: true });
         break;
 
       case 'open_pairing':
-        chrome.tabs.create({ url: chrome.runtime.getURL('pairing.html') });
+        if (!(await openSidePanelPath(sender, 'pairing.html'))) {
+          chrome.tabs.create({ url: chrome.runtime.getURL('pairing.html') });
+        }
         sendResponse({ success: true });
         break;
 
