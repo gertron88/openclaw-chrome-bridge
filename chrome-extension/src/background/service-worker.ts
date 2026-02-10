@@ -223,6 +223,15 @@ async function handleMessage(
         sendResponse({ success: true, sessions: agentSessions });
         break;
 
+      case 'get_remote_agents':
+        try {
+          const remoteAgents = await AuthManager.getAgentsList(message.agent_id);
+          sendResponse({ success: true, agents: remoteAgents });
+        } catch (error) {
+          sendResponse({ success: false, error: error instanceof Error ? error.message : String(error), agents: [] });
+        }
+        break;
+
       case 'get_messages':
         const messages = await SessionStorageManager.getMessages(message.session_id);
         sendResponse({ success: true, messages });

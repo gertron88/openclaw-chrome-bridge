@@ -28,6 +28,7 @@ class ChatManager {
     this.bindEvents();
     this.setupMessageListener();
     await this.loadAgents();
+    await this.refreshAgentConnectivity();
     await this.restoreSelectedAgent();
     this.setupAutoResize();
     this.setInitialLayout();
@@ -432,9 +433,43 @@ class ChatManager {
   private async ensureAgentConnection(agentId: string): Promise<void> {
     try {
       await this.sendExtensionMessage({ type: 'connect_agent', agent_id: agentId });
+      await this.refreshAgentConnectivity(agentId);
     } catch (error) {
       console.error('Failed to connect agent:', error);
+      this.updateConnectionStatus('error');
     }
+  }
+
+  private async refreshAgentConnectivity(agentId?: string): Promise<void> {
+    const ids = agentId ? [agentId] : Object.keys(this.agents);
+
+    await Promise.all(ids.map(async (id) => {
+      if (!this.agents[id]) return;
+
+      try {
+        const response = await this.sendExtensionMessage({ type: 'get_connection_status', agent_id: id });
+        const status = response?.status as 'disconnected' | 'connecting' | 'connected' | 'error' | undefined;
+        const isOnline = status === 'connected' || status === 'connecting';
+        this.agents[id].online = isOnline;
+
+        const agentItem = document.querySelector(`[data-agent-id="${id}"]`);
+        if (agentItem) {
+          const statusElement = agentItem.querySelector('.agent-status') as HTMLElement;
+          const lastMessage = agentItem.querySelector('.agent-last-message') as HTMLElement;
+          statusElement.classList.toggle('online', isOnline);
+          if (lastMessage && (!lastMessage.textContent || lastMessage.textContent === 'Online' || lastMessage.textContent === 'Offline')) {
+            lastMessage.textContent = isOnline ? 'Online' : 'Offline';
+          }
+        }
+
+        if (id === this.currentAgentId && status) {
+          this.updateConnectionStatus(status);
+          this.updateChatHeader(this.agents[id]);
+        }
+      } catch (error) {
+        console.error(`Failed to refresh connection status for agent ${id}:`, error);
+      }
+    }));
   }
 
   private toggleSidebar(): void {
@@ -584,7 +619,45 @@ class ChatManager {
       }
     }));
 
+    const remoteAgentStats = await this.getRemoteAgentStats();
+    const knownIds = new Set(stats.map((item) => item.id));
+
+    for (const remote of remoteAgentStats) {
+      const local = stats.find((item) => item.id === remote.id);
+      if (local) {
+        local.online = remote.online;
+      } else if (!knownIds.has(remote.id)) {
+        stats.push(remote);
+        knownIds.add(remote.id);
+      }
+    }
+
     return stats;
+  }
+
+  private async getRemoteAgentStats(): Promise<AgentDashboardStats[]> {
+    const preferredAgentId = this.currentAgentId || Object.keys(this.agents)[0];
+    if (!preferredAgentId) {
+      return [];
+    }
+
+    try {
+      const response = await this.sendExtensionMessage({ type: 'get_remote_agents', agent_id: preferredAgentId });
+      if (!response?.success || !Array.isArray(response.agents)) {
+        return [];
+      }
+
+      return response.agents.map((agent: any) => ({
+        id: agent.id,
+        name: agent.display_name || agent.id,
+        online: Boolean(agent.online),
+        sessionCount: 0,
+        lastActivity: agent.last_seen,
+      }));
+    } catch (error) {
+      console.error('Failed to load remote agent dashboard data:', error);
+      return [];
+    }
   }
 
   private async renderDashboards(): Promise<void> {
@@ -641,7 +714,7 @@ class ChatManager {
     `;
 
     if (cronAgents.length === 0) {
-      tableEl.innerHTML = '<div class="dashboard-empty">No cron-job agents detected. Name an agent with "cron", "schedule", or "job" to track it here.</div>';
+      tableEl.innerHTML = '<div class="dashboard-empty">No cron-job agents detected yet. Cron rows are inferred from paired/relay-visible agents whose names include "cron", "schedule", or "job".</div>';
       return;
     }
 
