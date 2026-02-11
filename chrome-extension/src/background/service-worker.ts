@@ -68,32 +68,28 @@ async function getPreferredPanelTarget(sender: chrome.runtime.MessageSender): Pr
   };
 }
 
-async function openSidePanelPath(
+async function configureSidePanelPath(
   sender: chrome.runtime.MessageSender,
   path: string
 ): Promise<boolean> {
-  if (!chrome.sidePanel) {
+  if (!chrome.sidePanel?.setOptions) {
     return false;
   }
 
   const target = await getPreferredPanelTarget(sender);
-  if (!target) {
+  if (!target?.tabId) {
     return false;
   }
 
   try {
-    if (target.tabId !== undefined && chrome.sidePanel.setOptions) {
-      await chrome.sidePanel.setOptions({
-        tabId: target.tabId,
-        path,
-        enabled: true,
-      });
-    }
-
-    await chrome.sidePanel.open({ windowId: target.windowId });
+    await chrome.sidePanel.setOptions({
+      tabId: target.tabId,
+      path,
+      enabled: true,
+    });
     return true;
   } catch (error) {
-    console.warn('Unable to open side panel path, will use fallback navigation:', error);
+    console.warn('Unable to configure side panel path, will use fallback navigation:', error);
     return false;
   }
 }
@@ -263,14 +259,14 @@ async function handleMessage(
 
         if (connectionMode === 'local_webui' && settings.local_webui_url) {
           chrome.tabs.create({ url: settings.local_webui_url });
-        } else if (!(await openSidePanelPath(sender, 'chat.html'))) {
+        } else if (!(await configureSidePanelPath(sender, 'chat.html'))) {
           chrome.tabs.create({ url: chrome.runtime.getURL('chat.html') });
         }
         sendResponse({ success: true });
         break;
 
       case 'open_pairing':
-        if (!(await openSidePanelPath(sender, 'pairing.html'))) {
+        if (!(await configureSidePanelPath(sender, 'pairing.html'))) {
           chrome.tabs.create({ url: chrome.runtime.getURL('pairing.html') });
         }
         sendResponse({ success: true });

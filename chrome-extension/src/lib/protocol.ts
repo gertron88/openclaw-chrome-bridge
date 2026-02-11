@@ -18,7 +18,7 @@ export const PresenceMessageSchema = z.object({
   type: z.literal('presence'),
   agent_id: z.string(),
   online: z.boolean(),
-  ts: z.string(),
+  ts: z.union([z.string(), z.number()]),
 });
 
 // Chat request from client to agent
@@ -37,8 +37,12 @@ export const ChatResponseSchema = z.object({
   request_id: z.string(),
   agent_id: z.string(),
   session_id: z.string(),
-  reply: z.string(),
-  ts: z.string(),
+  reply: z.string().optional(),
+  text: z.string().optional(),
+  message: z.string().optional(),
+  ts: z.union([z.string(), z.number()]),
+}).refine((value) => Boolean(value.reply || value.text || value.message), {
+  message: 'chat.response requires reply/text/message',
 });
 
 // Error messages

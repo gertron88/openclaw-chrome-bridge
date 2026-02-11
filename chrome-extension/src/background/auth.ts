@@ -1,5 +1,5 @@
 import { AuthTokens, PairingRequest, PairingResponse, RelayConfig } from '@/types';
-import { SyncStorageManager, isTokenExpired } from '@/lib/storage';
+import { SyncStorageManager, SessionStorageManager, isTokenExpired } from '@/lib/storage';
 import { 
   PairCompleteRequestSchema, 
   TokenRefreshRequestSchema,
@@ -171,9 +171,7 @@ export class AuthManager {
   static async removeAgent(agentId: string): Promise<void> {
     await SyncStorageManager.removeAgent(agentId);
     await SyncStorageManager.removeAuthTokens(agentId);
-    
-    // TODO: Also clean up session storage for this agent
-    // This would require iterating through sessions and removing ones for this agent
+    await SessionStorageManager.removeSessionsByAgent(agentId);
   }
 
   /**

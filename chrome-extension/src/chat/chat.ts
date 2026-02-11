@@ -90,6 +90,9 @@ class ChatManager {
         case 'agent_status':
           this.handleAgentStatus(message as AgentStatusEvent);
           break;
+        case 'request_error':
+          this.handleRequestError(message);
+          break;
       }
     });
   }
@@ -395,6 +398,14 @@ class ChatManager {
 
       await this.renderDashboards();
     }
+  }
+
+  private handleRequestError(message: ExtensionMessage): void {
+    if (!this.currentSessionId || (message.session_id && message.session_id !== this.currentSessionId)) {
+      return;
+    }
+
+    this.hideTypingIndicator();
   }
 
   private updateConnectionStatus(status: 'disconnected' | 'connecting' | 'connected' | 'error'): void {

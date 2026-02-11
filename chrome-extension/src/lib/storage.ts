@@ -75,6 +75,7 @@ export class SyncStorageManager {
     await chrome.storage.sync.set({ [SYNC_KEYS.DEVICE_ID]: deviceId });
   }
 
+
   static async clear(): Promise<void> {
     await chrome.storage.sync.clear();
   }
@@ -130,6 +131,53 @@ export class SessionStorageManager {
     await chrome.storage.session.set({ [SESSION_KEYS.MESSAGES]: allMessages });
   }
 
+
+  static async updateRequestStatus(
+    sessionId: string,
+    requestId: string,
+    status: 'pending' | 'delivered' | 'error',
+    error?: string
+  ): Promise<void> {
+    const result = await chrome.storage.session.get(SESSION_KEYS.MESSAGES);
+    const allMessages = result[SESSION_KEYS.MESSAGES] || {};
+    const sessionMessages: ChatMessage[] = allMessages[sessionId] || [];
+
+    let updated = false;
+    allMessages[sessionId] = sessionMessages.map((message) => {
+      if (message.request_id === requestId && message.type === 'request') {
+        updated = true;
+        return { ...message, status, error };
+      }
+
+      return message;
+    });
+
+    if (updated) {
+      await chrome.storage.session.set({ [SESSION_KEYS.MESSAGES]: allMessages });
+    }
+  }
+
+  static async markRequestError(requestId: string, errorText: string): Promise<void> {
+    const result = await chrome.storage.session.get(SESSION_KEYS.MESSAGES);
+    const allMessages = result[SESSION_KEYS.MESSAGES] || {};
+    let updated = false;
+
+    for (const [sessionId, sessionMessages] of Object.entries(allMessages)) {
+      allMessages[sessionId] = (sessionMessages as ChatMessage[]).map((message) => {
+        if (message.request_id === requestId && message.type === 'request') {
+          updated = true;
+          return { ...message, status: 'error', error: errorText };
+        }
+
+        return message;
+      });
+    }
+
+    if (updated) {
+      await chrome.storage.session.set({ [SESSION_KEYS.MESSAGES]: allMessages });
+    }
+  }
+
   static async removeMessages(sessionId: string): Promise<void> {
     const result = await chrome.storage.session.get(SESSION_KEYS.MESSAGES);
     const allMessages = result[SESSION_KEYS.MESSAGES] || {};
@@ -171,6 +219,18 @@ export class SessionStorageManager {
       if (typeof expiryTime === 'number' && now > expiryTime) {
         await this.removeMessages(sessionId);
       }
+    }
+  }
+
+
+  static async removeSessionsByAgent(agentId: string): Promise<void> {
+    const sessions = await this.getSessions();
+    const sessionIds = Object.values(sessions)
+      .filter((session) => session.agent_id === agentId)
+      .map((session) => session.id);
+
+    for (const sessionId of sessionIds) {
+      await this.removeSession(sessionId);
     }
   }
 

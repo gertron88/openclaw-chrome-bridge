@@ -279,6 +279,27 @@ class PopupManager {
     this.closeSettings();
   }
 
+
+  private async openExtensionSidePanel(path: string): Promise<boolean> {
+    if (!chrome.sidePanel?.open || !chrome.sidePanel?.setOptions) {
+      return false;
+    }
+
+    const currentWindow = await chrome.windows.getCurrent();
+    if (!currentWindow.id) {
+      return false;
+    }
+
+    const [activeTab] = await chrome.tabs.query({ windowId: currentWindow.id, active: true });
+    if (!activeTab?.id) {
+      return false;
+    }
+
+    await chrome.sidePanel.setOptions({ tabId: activeTab.id, path, enabled: true });
+    await chrome.sidePanel.open({ windowId: currentWindow.id });
+    return true;
+  }
+
   private showLoading(): void {
     const noAgentsElement = document.getElementById('no-agents');
     const agentsListElement = document.getElementById('agents-list');
@@ -302,8 +323,11 @@ class PopupManager {
 
   private async openPairingScreen(): Promise<void> {
     try {
-      await this.sendMessage({ type: 'open_pairing' });
-      window.close(); // Close popup after opening pairing
+      const opened = await this.openExtensionSidePanel('pairing.html');
+      if (!opened) {
+        await this.sendMessage({ type: 'open_pairing' });
+      }
+      window.close();
     } catch (error) {
       console.error('Failed to open pairing screen:', error);
     }
@@ -311,8 +335,11 @@ class PopupManager {
 
   private async openChatInterface(): Promise<void> {
     try {
-      await this.sendMessage({ type: 'open_chat' });
-      window.close(); // Close popup after opening chat
+      const opened = await this.openExtensionSidePanel('chat.html');
+      if (!opened) {
+        await this.sendMessage({ type: 'open_chat' });
+      }
+      window.close();
     } catch (error) {
       console.error('Failed to open chat interface:', error);
     }
@@ -326,8 +353,11 @@ class PopupManager {
         selected_agent_name: agentName 
       });
       
-      await this.sendMessage({ type: 'open_chat' });
-      window.close(); // Close popup after opening chat
+      const opened = await this.openExtensionSidePanel('chat.html');
+      if (!opened) {
+        await this.sendMessage({ type: 'open_chat' });
+      }
+      window.close();
     } catch (error) {
       console.error('Failed to open chat for agent:', error);
     }

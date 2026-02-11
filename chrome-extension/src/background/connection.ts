@@ -19,6 +19,16 @@ export class ConnectionManager {
   private shouldReconnect = true;
   private messageQueue: any[] = [];
 
+
+  private normalizeTimestamp(value: string | number): string {
+    if (typeof value === 'number') {
+      return new Date(value).toISOString();
+    }
+
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
+  }
+
   constructor(agentId: string) {
     this.agentId = agentId;
   }
@@ -232,7 +242,7 @@ export class ConnectionManager {
     
     if (agent) {
       agent.online = message.online;
-      agent.last_seen = message.ts;
+      agent.last_seen = this.normalizeTimestamp(message.ts);
       await SyncStorageManager.setAgent(message.agent_id, agent);
     }
 
@@ -241,6 +251,13 @@ export class ConnectionManager {
   }
 
   private async handleChatResponse(message: IncomingMessage & { type: 'chat.response' }): Promise<void> {
+    const responseText = message.reply || message.text || message.message || '';
+    if (!responseText) {
+      return;
+    }
+
+    const normalizedTimestamp = this.normalizeTimestamp(message.ts);
+
     // Create response message
     const chatMessage: ChatMessage = {
       id: `resp_${message.request_id}`,
@@ -248,27 +265,14 @@ export class ConnectionManager {
       agent_id: message.agent_id,
       session_id: message.session_id,
       type: 'response',
-      text: message.reply,
-      timestamp: message.ts,
+      text: responseText,
+      timestamp: normalizedTimestamp,
       status: 'delivered',
     };
 
-    // Store message
+    // Store message and update request status
     await SessionStorageManager.addMessage(message.session_id, chatMessage);
-    
-    // Update request status to delivered
-    const messages = await SessionStorageManager.getMessages(message.session_id);
-    const requestMessage = messages.find(m => m.request_id === message.request_id && m.type === 'request');
-    if (requestMessage) {
-      requestMessage.status = 'delivered';
-      // Re-save the updated message list
-      const updatedMessages = messages.map(m => 
-        m.request_id === message.request_id && m.type === 'request' 
-          ? requestMessage 
-          : m
-      );
-      // Note: This is a simplification. In a real implementation, you'd want a more efficient update method.
-    }
+    await SessionStorageManager.updateRequestStatus(message.session_id, message.request_id, 'delivered');
 
     // Broadcast new message
     this.broadcastNewMessage(chatMessage);
@@ -276,11 +280,18 @@ export class ConnectionManager {
 
   private async handleErrorMessage(message: IncomingMessage & { type: 'error' }): Promise<void> {
     console.error('Received error from relay:', message);
-    
+
     if (message.request_id) {
-      // Update message status to error
-      // Find the message in session storage and mark it as error
-      // This is a simplified implementation
+      await SessionStorageManager.markRequestError(message.request_id, message.message || message.code);
+
+      chrome.runtime.sendMessage({
+        type: 'request_error',
+        request_id: message.request_id,
+        error: message.message || message.code,
+        agent_id: this.agentId,
+      }).catch(() => {
+        // Ignore errors if no listeners
+      });
     }
   }
 
