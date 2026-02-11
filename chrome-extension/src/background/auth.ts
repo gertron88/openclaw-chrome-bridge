@@ -228,7 +228,7 @@ export class AuthManager {
   /**
    * Get WebSocket URL for agent connection
    */
-  static async getWebSocketUrl(agentId: string): Promise<string> {
+  static async getWebSocketUrl(agentId: string, accessToken?: string): Promise<string> {
     const agents = await SyncStorageManager.getAgents();
     const agent = agents[agentId];
     
@@ -240,6 +240,12 @@ export class AuthManager {
     
     // Convert HTTP to WebSocket URL
     const wsUrl = relayUrl.replace(/^https?:/, 'wss:').replace(/^http:/, 'ws:');
-    return `${wsUrl}/ws/client`;
+    const clientUrl = new URL(`${wsUrl}/ws/client`);
+
+    if (accessToken) {
+      clientUrl.searchParams.set('access_token', accessToken);
+    }
+
+    return clientUrl.toString();
   }
 }

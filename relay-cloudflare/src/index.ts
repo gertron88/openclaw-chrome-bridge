@@ -65,23 +65,34 @@ app.get('/ws/agent', async (c) => {
 });
 
 app.get('/ws/client', async (c) => {
-  // Extract device ID from JWT token
   const authHeader = c.req.header('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return c.text('Missing Authorization header', 401);
+  const accessToken = c.req.query('access_token');
+  const hasBearerHeader = Boolean(authHeader && authHeader.startsWith('Bearer '));
+
+  if (!hasBearerHeader && !accessToken) {
+    return c.text('Missing Authorization header or access_token query parameter', 401);
   }
 
-  // For client connections, we use a random ID since multiple clients 
+  // For client connections, we use a random ID since multiple clients
   // from the same device might connect simultaneously
   const connectionId = crypto.randomUUID();
   const id = c.env.CLIENT_CONNECTION.idFromString(connectionId);
   const durableObject = c.env.CLIENT_CONNECTION.get(id);
-  
-  // Forward the request to the Durable Object
+
+  // Forward the request to the Durable Object and normalize auth transport
   const url = new URL(c.req.url);
   url.pathname = '/websocket';
-  
-  return durableObject.fetch(new Request(url.toString(), c.req.raw));
+
+  const headers = new Headers(c.req.raw.headers);
+  if (!hasBearerHeader && accessToken) {
+    headers.set('Authorization', `Bearer ${accessToken}`);
+  }
+
+  return durableObject.fetch(new Request(url.toString(), {
+    method: c.req.raw.method,
+    headers,
+    body: c.req.raw.body,
+  }));
 });
 
 // Status endpoint for monitoring

@@ -13,8 +13,8 @@ import { Agent, ChatMessage, ConnectionStatusEvent, NewMessageEvent, AgentStatus
 export class ConnectionManager {
   private ws: WebSocket | null = null;
   private agentId: string;
-  private reconnectTimer: number | null = null;
-  private heartbeatTimer: number | null = null;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private isConnecting = false;
   private shouldReconnect = true;
   private messageQueue: any[] = [];
@@ -50,7 +50,7 @@ export class ConnectionManager {
         throw new Error('No valid access token');
       }
 
-      const wsUrl = await AuthManager.getWebSocketUrl(this.agentId);
+      const wsUrl = await AuthManager.getWebSocketUrl(this.agentId, accessToken);
       const deviceId = await initializeDeviceId();
 
       this.broadcastStatus('connecting');
@@ -298,7 +298,7 @@ export class ConnectionManager {
   private scheduleReconnect(): void {
     this.clearReconnectTimer();
     
-    this.reconnectTimer = window.setTimeout(() => {
+    this.reconnectTimer = globalThis.setTimeout(() => {
       console.log('Attempting to reconnect for agent:', this.agentId);
       this.connect();
     }, RECONNECT_DELAY);
@@ -306,7 +306,7 @@ export class ConnectionManager {
 
   private clearReconnectTimer(): void {
     if (this.reconnectTimer) {
-      window.clearTimeout(this.reconnectTimer);
+      globalThis.clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
   }
@@ -315,7 +315,7 @@ export class ConnectionManager {
     this.stopHeartbeat();
     
     // Send ping every 30 seconds
-    this.heartbeatTimer = window.setInterval(() => {
+    this.heartbeatTimer = globalThis.setInterval(() => {
       if (this.isConnected()) {
         this.sendMessage({ type: 'ping', ts: new Date().toISOString() });
       }
@@ -324,7 +324,7 @@ export class ConnectionManager {
 
   private stopHeartbeat(): void {
     if (this.heartbeatTimer) {
-      window.clearInterval(this.heartbeatTimer);
+      globalThis.clearInterval(this.heartbeatTimer);
       this.heartbeatTimer = null;
     }
   }

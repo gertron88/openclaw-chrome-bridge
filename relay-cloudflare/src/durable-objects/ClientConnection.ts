@@ -44,13 +44,18 @@ export class ClientConnection {
       return new Response('Expected websocket', { status: 400 });
     }
 
-    // Verify client authentication with JWT
+    // Verify client authentication with JWT (header or query fallback)
     const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return new Response('Missing Authorization header', { status: 401 });
+    const queryToken = new URL(request.url).searchParams.get('access_token');
+    const bearerToken = authHeader && authHeader.startsWith('Bearer ')
+      ? authHeader.slice(7)
+      : queryToken;
+
+    if (!bearerToken) {
+      return new Response('Missing Authorization header or access_token query parameter', { status: 401 });
     }
 
-    const token = authHeader.slice(7);
+    const token = bearerToken;
     const payload = await verifyJWT(token, this.env.JWT_SECRET);
     
     if (!payload) {
