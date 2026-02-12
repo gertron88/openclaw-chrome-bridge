@@ -6,7 +6,9 @@
   "permissions": [
     "storage",
     "alarms",
-    "sidePanel"
+    "sidePanel",
+    "identity",
+    "identity.email"
   ],
   "host_permissions": [
     "https://*.clawdbot.com/*",
@@ -18,7 +20,8 @@
     "http://localhost/*",
     "ws://localhost/*",
     "http://127.0.0.1/*",
-    "ws://127.0.0.1/*"
+    "ws://127.0.0.1/*",
+    "https://openclaw-chrome-relay.gertron88.workers.dev/*"
   ],
   "background": {
     "service_worker": "service-worker.js"

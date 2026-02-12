@@ -354,3 +354,22 @@ body {
   gap: 8px;
   margin-top: 14px;
 }
+
+
+.settings-help {
+  margin: 6px 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.settings-actions-inline {
+  justify-content: flex-start;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.settings-panel hr {
+  border: 0;
+  border-top: 1px solid #e2e8f0;
+  margin: 16px 0;
+}

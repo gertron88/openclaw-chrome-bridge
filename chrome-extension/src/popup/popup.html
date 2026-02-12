@@ -106,6 +106,21 @@
         <input id="local-webui-url" class="settings-input" type="url" placeholder="http://127.0.0.1:18789/chat?session=agent:main:main" />
       </div>
 
+
+      <hr />
+      <h3>Account & Billing</h3>
+      <p id="account-status" class="settings-help">Not signed in</p>
+      <p id="plan-status" class="settings-help">Plan: Free (1 relay agent)</p>
+
+      <div class="settings-actions settings-actions-inline">
+        <button id="sign-in-btn" class="btn btn-secondary">Sign in with Chrome Profile</button>
+        <button id="sign-out-btn" class="btn btn-secondary" style="display: none;">Sign out</button>
+      </div>
+      <div class="settings-actions settings-actions-inline">
+        <button id="upgrade-btn" class="btn btn-primary" disabled>Upgrade to Pro</button>
+        <button id="manage-billing-btn" class="btn btn-secondary" disabled>Manage Billing</button>
+      </div>
+
       <div class="settings-actions">
         <button id="cancel-settings-btn" class="btn btn-secondary">Cancel</button>
         <button id="save-settings-btn" class="btn btn-primary">Save</button>

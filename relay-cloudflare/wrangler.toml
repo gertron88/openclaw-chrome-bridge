@@ -7,6 +7,12 @@ compatibility_flags = ["nodejs_compat"]
 # Environment variables (set via wrangler secret put)
 # JWT_SECRET - for signing JWT tokens
 # AGENT_SECRET - for agent authentication
+# STRIPE_SECRET_KEY - Stripe API secret key
+# STRIPE_PRICE_ID - Stripe recurring price ID for Pro plan
+# STRIPE_WEBHOOK_SECRET - Stripe webhook signing secret
+# BILLING_SUCCESS_URL - Redirect after successful checkout
+# BILLING_CANCEL_URL - Redirect after cancelled checkout
+# BILLING_PORTAL_RETURN_URL - Redirect after leaving billing portal
 
 # D1 Database
 [[d1_databases]]

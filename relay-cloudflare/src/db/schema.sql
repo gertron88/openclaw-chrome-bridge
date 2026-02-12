@@ -72,3 +72,41 @@ CREATE TABLE IF NOT EXISTS rate_limits (
 );
 
 CREATE INDEX idx_rate_limits_window_start ON rate_limits(window_start);
+-- Accounts table - stores user identity and billing status
+CREATE TABLE IF NOT EXISTS accounts (
+    id TEXT PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    provider TEXT NOT NULL,
+    provider_user_id TEXT,
+    stripe_customer_id TEXT,
+    stripe_subscription_id TEXT,
+    plan TEXT NOT NULL DEFAULT 'free',
+    subscription_status TEXT NOT NULL DEFAULT 'inactive',
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+CREATE INDEX IF NOT EXISTS idx_accounts_stripe_customer_id ON accounts(stripe_customer_id);
+
+-- Account sessions for extension login state
+CREATE TABLE IF NOT EXISTS account_sessions (
+    token_hash TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL,
+    expires_at INTEGER NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_account_sessions_account_id ON account_sessions(account_id);
+CREATE INDEX IF NOT EXISTS idx_account_sessions_expires_at ON account_sessions(expires_at);
+
+-- Mapping of account to known paired agent IDs (for freemium enforcement)
+CREATE TABLE IF NOT EXISTS account_agents (
+    account_id TEXT NOT NULL,
+    agent_id TEXT NOT NULL,
+    linked_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    PRIMARY KEY (account_id, agent_id),
+    FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_account_agents_account_id ON account_agents(account_id);

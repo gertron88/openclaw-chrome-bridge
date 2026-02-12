@@ -8,6 +8,7 @@ import { cleanupExpiredTokens } from './auth/tokens';
 import pairRoutes from './routes/pair';
 import tokenRoutes from './routes/token';
 import agentsRoutes from './routes/agents';
+import billingRoutes from './routes/billing';
 
 // Import Durable Object classes
 export { AgentConnection } from './durable-objects/AgentConnection';
@@ -45,6 +46,7 @@ app.get('/health', (c) => {
 app.route('/api/pair', pairRoutes);
 app.route('/api/token', tokenRoutes);
 app.route('/api/agents', agentsRoutes);
+app.route('/api/billing', billingRoutes);
 
 // WebSocket endpoints
 app.get('/ws/agent', async (c) => {

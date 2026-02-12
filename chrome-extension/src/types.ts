@@ -117,6 +117,17 @@ export interface ErrorMessage extends WSMessage {
   message: string;
 }
 
+
+export interface BillingAccount {
+  id: string;
+  email: string;
+  plan: 'free' | 'pro';
+  subscription_status: string;
+  agents_in_use: number;
+  agent_limit: number | null;
+  can_add_agent: boolean;
+}
+
 // UI state
 export interface UIState {
   current_session?: string;
