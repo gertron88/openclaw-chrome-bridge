@@ -251,29 +251,58 @@ class PopupManager {
   }
 
   private async signInWithChromeProfile(): Promise<void> {
-    if (!chrome.identity?.getProfileUserInfo) {
+    if (!chrome.identity) {
       alert('Chrome identity APIs are not available in this environment.');
       return;
     }
 
     try {
-      const profileInfo = await new Promise<chrome.identity.UserInfo>((resolve) => {
-        chrome.identity.getProfileUserInfo((userInfo) => resolve(userInfo));
-      });
-      if (!profileInfo.email) {
-        alert('No Google profile email found. Please sign in to Chrome and allow profile access.');
-        return;
+      const relayUrl = await this.getRelayBaseUrl();
+
+      let response: Response | null = null;
+      if (chrome.identity.getAuthToken) {
+        try {
+          const googleAccessToken = await new Promise<string>((resolve, reject) => {
+            chrome.identity.getAuthToken({ interactive: true }, (token) => {
+              if (chrome.runtime.lastError || !token) {
+                reject(new Error(chrome.runtime.lastError?.message || 'No Google OAuth token received'));
+                return;
+              }
+              resolve(token);
+            });
+          });
+
+          response = await fetch(`${relayUrl}/api/billing/auth/google`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ google_access_token: googleAccessToken }),
+          });
+        } catch (oauthError) {
+          console.warn('Google OAuth sign-in unavailable, falling back to profile email:', oauthError);
+        }
       }
 
-      const relayUrl = await this.getRelayBaseUrl();
-      const response = await fetch(`${relayUrl}/api/billing/auth/chrome-profile`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: profileInfo.email,
-          chrome_profile_id: profileInfo.id || undefined,
-        }),
-      });
+      if (!response) {
+        if (!chrome.identity.getProfileUserInfo) {
+          throw new Error('Google OAuth unavailable and no profile fallback available.');
+        }
+
+        const profileInfo = await new Promise<chrome.identity.UserInfo>((resolve) => {
+          chrome.identity.getProfileUserInfo((userInfo) => resolve(userInfo));
+        });
+        if (!profileInfo.email) {
+          throw new Error('No Google profile email found. Please sign in to Chrome and allow profile access.');
+        }
+
+        response = await fetch(`${relayUrl}/api/billing/auth/chrome-profile`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: profileInfo.email,
+            chrome_profile_id: profileInfo.id || undefined,
+          }),
+        });
+      }
 
       if (!response.ok) {
         const errText = await response.text();

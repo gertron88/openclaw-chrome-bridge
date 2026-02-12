@@ -40,11 +40,20 @@ export class AuthManager {
       device_label: request.device_label,
     });
 
+    const billingSession = await chrome.storage.local.get('billing_session_token');
+    const billingSessionToken = billingSession.billing_session_token as string | undefined;
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (billingSessionToken) {
+      headers['Authorization'] = `Bearer ${billingSessionToken}`;
+    }
+
     const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify(validatedRequest),
     });
 

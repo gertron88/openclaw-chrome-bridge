@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { type CloudflareBindings } from '@/config';
+import { AccountRow, getAccountFromBearer, getAgentUsage, sha256Hex, SESSION_TOKEN_TTL_SECONDS, FREE_AGENT_LIMIT } from '@/auth/account';
 
 const app = new Hono<{ Bindings: CloudflareBindings }>();
 
@@ -13,8 +14,10 @@ const syncAgentsSchema = z.object({
   agent_ids: z.array(z.string().min(1)).max(100),
 });
 
-const sessionTokenTtlSeconds = 30 * 24 * 60 * 60;
-const freeAgentLimit = 1;
+
+const googleAuthSchema = z.object({
+  google_access_token: z.string().min(1),
+});
 
 
 function timingSafeEqualHex(a: string, b: string): boolean {
@@ -39,20 +42,7 @@ async function hmacSha256Hex(secret: string, payload: string): Promise<string> {
 }
 
 
-interface AccountRow {
-  id: string;
-  email: string;
-  stripe_customer_id: string | null;
-  plan: string;
-  subscription_status: string;
-}
-
 const nowUnix = (): number => Math.floor(Date.now() / 1000);
-
-async function sha256Hex(input: string): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
-  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
-}
 
 function requireBillingEnv(c: any): { stripeSecretKey: string; stripePriceId: string; successUrl: string; cancelUrl: string; portalReturnUrl: string } {
   const stripeSecretKey = c.env.STRIPE_SECRET_KEY;
@@ -101,15 +91,9 @@ async function buildAccountResponse(DB: D1Database, accountId: string): Promise<
     throw new Error('Account not found');
   }
 
-  const linkedAgentsCountRow = await DB.prepare(`
-    SELECT COUNT(*) as count
-    FROM account_agents
-    WHERE account_id = ?
-  `).bind(account.id).first<{ count: number }>();
-
-  const agentsInUse = Number(linkedAgentsCountRow?.count || 0);
+  const agentsInUse = await getAgentUsage(DB, account.id);
   const paid = account.plan === 'pro' && ['active', 'trialing', 'past_due'].includes(account.subscription_status);
-  const agentLimit = paid ? null : freeAgentLimit;
+  const agentLimit = paid ? null : FREE_AGENT_LIMIT;
 
   return {
     id: account.id,
@@ -119,32 +103,77 @@ async function buildAccountResponse(DB: D1Database, accountId: string): Promise<
     stripe_customer_id: account.stripe_customer_id,
     agents_in_use: agentsInUse,
     agent_limit: agentLimit,
-    can_add_agent: paid || agentsInUse < freeAgentLimit,
+    can_add_agent: paid || agentsInUse < FREE_AGENT_LIMIT,
   };
 }
 
-async function getAccountFromBearer(c: any): Promise<AccountRow | null> {
-  const authHeader = c.req.header('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return null;
+
+
+app.post('/auth/google', async (c) => {
+  try {
+    const payload = googleAuthSchema.parse(await c.req.json());
+    const { DB } = c.env;
+
+    const tokenInfoRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?access_token=${encodeURIComponent(payload.google_access_token)}`);
+    if (!tokenInfoRes.ok) {
+      return c.json({ error: 'Invalid Google token' }, 401);
+    }
+
+    const tokenInfo = await tokenInfoRes.json() as { email?: string; sub?: string; exp?: string };
+    if (!tokenInfo.email || !tokenInfo.sub) {
+      return c.json({ error: 'Google token did not include required identity claims' }, 401);
+    }
+
+    const email = tokenInfo.email.trim().toLowerCase();
+    let account = await DB.prepare(`
+      SELECT id, email, stripe_customer_id, plan, subscription_status
+      FROM accounts
+      WHERE email = ?
+      LIMIT 1
+    `).bind(email).first<AccountRow>();
+
+    if (!account) {
+      const accountId = crypto.randomUUID();
+      await DB.prepare(`
+        INSERT INTO accounts (id, email, provider, provider_user_id, plan, subscription_status, created_at, updated_at)
+        VALUES (?, ?, 'google', ?, 'free', 'inactive', ?, ?)
+      `).bind(accountId, email, tokenInfo.sub, nowUnix(), nowUnix()).run();
+
+      account = {
+        id: accountId,
+        email,
+        stripe_customer_id: null,
+        plan: 'free',
+        subscription_status: 'inactive',
+      };
+    }
+
+    const sessionToken = crypto.randomUUID();
+    const sessionTokenHash = await sha256Hex(sessionToken);
+    const expiresAt = nowUnix() + SESSION_TOKEN_TTL_SECONDS;
+
+    await DB.prepare(`
+      INSERT INTO account_sessions (token_hash, account_id, expires_at, created_at)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(token_hash) DO UPDATE SET
+        account_id = excluded.account_id,
+        expires_at = excluded.expires_at
+    `).bind(sessionTokenHash, account.id, expiresAt, nowUnix()).run();
+
+    return c.json({
+      session_token: sessionToken,
+      account: await buildAccountResponse(DB, account.id),
+      expires_at: expiresAt,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return c.json({ error: 'Invalid payload', details: error.issues }, 400);
+    }
+
+    console.error('Google auth failed:', error);
+    return c.json({ error: 'Authentication failed' }, 500);
   }
-
-  const token = authHeader.slice(7);
-  if (!token) {
-    return null;
-  }
-
-  const tokenHash = await sha256Hex(token);
-  const row = await c.env.DB.prepare(`
-    SELECT a.id, a.email, a.stripe_customer_id, a.plan, a.subscription_status
-    FROM account_sessions s
-    JOIN accounts a ON a.id = s.account_id
-    WHERE s.token_hash = ? AND s.expires_at > ?
-    LIMIT 1
-  `).bind(tokenHash, nowUnix()).first<AccountRow>();
-
-  return row ?? null;
-}
+});
 
 app.post('/auth/chrome-profile', async (c) => {
   try {
@@ -178,7 +207,7 @@ app.post('/auth/chrome-profile', async (c) => {
 
     const sessionToken = crypto.randomUUID();
     const sessionTokenHash = await sha256Hex(sessionToken);
-    const expiresAt = nowUnix() + sessionTokenTtlSeconds;
+    const expiresAt = nowUnix() + SESSION_TOKEN_TTL_SECONDS;
 
     await DB.prepare(`
       INSERT INTO account_sessions (token_hash, account_id, expires_at, created_at)
@@ -204,7 +233,7 @@ app.post('/auth/chrome-profile', async (c) => {
 });
 
 app.get('/me', async (c) => {
-  const account = await getAccountFromBearer(c);
+  const account = await getAccountFromBearer(c.env.DB, c.req.header('Authorization'));
   if (!account) {
     return c.json({ error: 'Unauthorized' }, 401);
   }
@@ -214,7 +243,7 @@ app.get('/me', async (c) => {
 
 app.post('/sync-agents', async (c) => {
   try {
-    const account = await getAccountFromBearer(c);
+    const account = await getAccountFromBearer(c.env.DB, c.req.header('Authorization'));
     if (!account) {
       return c.json({ error: 'Unauthorized' }, 401);
     }
@@ -244,7 +273,7 @@ app.post('/sync-agents', async (c) => {
 
 app.post('/checkout', async (c) => {
   try {
-    const account = await getAccountFromBearer(c);
+    const account = await getAccountFromBearer(c.env.DB, c.req.header('Authorization'));
     if (!account) {
       return c.json({ error: 'Unauthorized' }, 401);
     }
@@ -292,7 +321,7 @@ app.post('/checkout', async (c) => {
 
 app.post('/portal', async (c) => {
   try {
-    const account = await getAccountFromBearer(c);
+    const account = await getAccountFromBearer(c.env.DB, c.req.header('Authorization'));
     if (!account) {
       return c.json({ error: 'Unauthorized' }, 401);
     }

@@ -3,6 +3,7 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { CONFIG, generatePairingCode, type CloudflareBindings } from '@/config';
 import { generateRefreshToken, generateDeviceId, createAccessToken, storeRefreshToken, hashToken } from '@/auth/tokens';
+import { getAccountFromBearer, canAccountAddAgent } from '@/auth/account';
 
 const app = new Hono<{ Bindings: CloudflareBindings }>();
 
@@ -177,6 +178,21 @@ app.post('/complete', zValidator('json', completePairingSchema), async (c) => {
     const agentId = pairing.agent_id as string;
     const agentDisplayName = pairing.display_name as string;
     const tenantId = pairing.tenant_id as string | null;
+
+    // Enforce freemium limits (if user is signed into billing)
+    const account = await getAccountFromBearer(DB, c.req.header('Authorization'));
+    if (account) {
+      const canAddAgent = await canAccountAddAgent(DB, account);
+      if (!canAddAgent) {
+        const alreadyLinked = await DB.prepare(`
+          SELECT 1 FROM account_agents WHERE account_id = ? AND agent_id = ? LIMIT 1
+        `).bind(account.id, agentId).first();
+
+        if (!alreadyLinked) {
+          return c.json({ error: 'Free plan limit reached. Upgrade to pair more than one agent.' }, 402);
+        }
+      }
+    }
     
     // Generate device and tokens
     const deviceId = generateDeviceId();
@@ -193,6 +209,13 @@ app.post('/complete', zValidator('json', completePairingSchema), async (c) => {
       // Delete used pairing code
       DB.prepare('DELETE FROM pairings WHERE code = ?').bind(code)
     ]);
+
+    if (account) {
+      await DB.prepare(`
+        INSERT OR IGNORE INTO account_agents (account_id, agent_id, linked_at)
+        VALUES (?, ?, ?)
+      `).bind(account.id, agentId, now).run();
+    }
     
     // Store refresh token
     await storeRefreshToken(DB, refreshToken, deviceId, agentId);
