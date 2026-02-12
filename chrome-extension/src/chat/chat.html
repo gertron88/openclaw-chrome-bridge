@@ -74,6 +74,7 @@
                   <path d="M3 3.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5zM3 6a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9A.5.5 0 0 1 3 6zm0 2.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5z"/>
                 </svg>
               </button>
+              <button id="open-diagnostics" class="btn-icon" title="Diagnostics">⚙️</button>
             </div>
           </header>
 
@@ -117,6 +118,29 @@
         <div class="dashboard-cards" id="cron-summary"></div>
         <div class="dashboard-table" id="cron-table"></div>
       </section>
+
+      <aside id="diagnostics-panel" class="diagnostics-panel" style="display: none;">
+        <div class="diagnostics-header">
+          <h3>Connection Diagnostics</h3>
+          <button id="close-diagnostics" class="btn-icon" title="Close diagnostics">✕</button>
+        </div>
+
+        <div class="diagnostics-controls">
+          <label class="diagnostics-toggle">
+            <input id="verbose-logging-toggle" type="checkbox" />
+            Verbose logging
+          </label>
+          <div class="diagnostics-buttons">
+            <button id="refresh-connection" class="btn btn-secondary">Refresh</button>
+            <button id="reconnect-agent" class="btn btn-secondary">Reconnect</button>
+            <button id="clear-diagnostic-logs" class="btn btn-secondary">Clear Logs</button>
+          </div>
+        </div>
+
+        <div id="diagnostics-status" class="diagnostics-status"></div>
+        <pre id="diagnostic-log-list" class="diagnostic-log-list"></pre>
+      </aside>
+
     </main>
   </div>
 

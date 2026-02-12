@@ -19,6 +19,7 @@ class ChatManager {
   private isTyping = false;
   private sidebarCollapsed = false;
   private currentView: WorkspaceView = 'chat';
+  private diagnosticsOpen = false;
 
   constructor() {
     this.init();
@@ -33,6 +34,8 @@ class ChatManager {
     this.setupAutoResize();
     this.setInitialLayout();
     await this.renderDashboards();
+    if (this.diagnosticsOpen) await this.refreshDiagnostics();
+    await this.refreshDiagnostics();
   }
 
   private bindEvents(): void {
@@ -64,6 +67,13 @@ class ChatManager {
     });
 
     sendButton?.addEventListener('click', () => this.sendMessage());
+
+    document.getElementById('open-diagnostics')?.addEventListener('click', () => this.toggleDiagnostics(true));
+    document.getElementById('close-diagnostics')?.addEventListener('click', () => this.toggleDiagnostics(false));
+    document.getElementById('refresh-connection')?.addEventListener('click', () => this.refreshDiagnostics());
+    document.getElementById('reconnect-agent')?.addEventListener('click', () => this.reconnectCurrentAgent());
+    document.getElementById('clear-diagnostic-logs')?.addEventListener('click', () => this.clearDiagnosticLogs());
+    document.getElementById('verbose-logging-toggle')?.addEventListener('change', (e) => this.setVerboseLogging((e.target as HTMLInputElement).checked));
   }
 
   private switchView(view: WorkspaceView): void {
@@ -246,6 +256,8 @@ class ChatManager {
         this.messages = [];
         this.renderMessages();
         await this.renderDashboards();
+    if (this.diagnosticsOpen) await this.refreshDiagnostics();
+    await this.refreshDiagnostics();
       }
     } catch (error) {
       console.error('Failed to create session:', error);
@@ -314,7 +326,12 @@ class ChatManager {
       });
 
       if (response.success) {
-        this.showTypingIndicator();
+        if (response.queued) {
+          this.updateConnectionStatus('disconnected');
+        } else {
+          this.showTypingIndicator();
+        }
+        await this.refreshDiagnostics();
       } else {
         console.error('Failed to send message:', response.error);
       }
@@ -357,6 +374,7 @@ class ChatManager {
   private handleConnectionStatus(event: ConnectionStatusEvent): void {
     if (event.agent_id === this.currentAgentId) {
       this.updateConnectionStatus(event.status);
+      if (this.diagnosticsOpen) void this.refreshDiagnostics();
     }
   }
 
@@ -372,6 +390,8 @@ class ChatManager {
 
     this.updateAgentLastMessage(message.agent_id, message.text);
     await this.renderDashboards();
+    if (this.diagnosticsOpen) await this.refreshDiagnostics();
+    await this.refreshDiagnostics();
   }
 
   private async handleAgentStatus(event: AgentStatusEvent): Promise<void> {
@@ -397,6 +417,8 @@ class ChatManager {
       }
 
       await this.renderDashboards();
+    if (this.diagnosticsOpen) await this.refreshDiagnostics();
+    await this.refreshDiagnostics();
     }
   }
 
@@ -406,6 +428,7 @@ class ChatManager {
     }
 
     this.hideTypingIndicator();
+    if (this.diagnosticsOpen) void this.refreshDiagnostics();
   }
 
   private updateConnectionStatus(status: 'disconnected' | 'connecting' | 'connected' | 'error'): void {
@@ -539,6 +562,8 @@ class ChatManager {
 
       this.renderAgentsList();
       await this.renderDashboards();
+    if (this.diagnosticsOpen) await this.refreshDiagnostics();
+    await this.refreshDiagnostics();
     } catch (error) {
       console.error('Failed to remove agent:', error);
       alert('Failed to remove agent. Please try again.');
@@ -549,6 +574,70 @@ class ChatManager {
     // When already in the extension side panel, navigate in-place to avoid
     // service worker sidePanel.open() gesture restrictions.
     window.location.href = chrome.runtime.getURL('pairing.html');
+  }
+
+
+  private toggleDiagnostics(open?: boolean): void {
+    const panel = document.getElementById('diagnostics-panel');
+    if (!panel) return;
+
+    this.diagnosticsOpen = open ?? !this.diagnosticsOpen;
+    panel.style.display = this.diagnosticsOpen ? 'flex' : 'none';
+
+    if (this.diagnosticsOpen) {
+      void this.refreshDiagnostics();
+    }
+  }
+
+  private async refreshDiagnostics(): Promise<void> {
+    const statusEl = document.getElementById('diagnostics-status');
+    const logsEl = document.getElementById('diagnostic-log-list');
+    const toggleEl = document.getElementById('verbose-logging-toggle') as HTMLInputElement | null;
+
+    const selectedAgent = this.currentAgentId || Object.keys(this.agents)[0] || null;
+    let status = 'disconnected';
+
+    if (selectedAgent) {
+      const statusResponse = await this.sendExtensionMessage({ type: 'get_connection_status', agent_id: selectedAgent });
+      status = statusResponse?.status || 'disconnected';
+    }
+
+    const logsResponse = await this.sendExtensionMessage({ type: 'get_diagnostic_logs', limit: 200 });
+    const logs = logsResponse?.logs || [];
+
+    const verboseResult = await chrome.storage.sync.get('verbose_logging');
+    if (toggleEl) {
+      toggleEl.checked = Boolean(verboseResult.verbose_logging);
+    }
+
+    if (statusEl) {
+      statusEl.textContent = `Agent: ${selectedAgent || 'none'} | Status: ${status} | Logs: ${logs.length}`;
+    }
+
+    if (logsEl) {
+      logsEl.textContent = logs
+        .map((log: any) => `${log.ts} [${log.level}] ${log.category} - ${log.message}${log.meta ? `\n  ${log.meta}` : ''}`)
+        .join('\n');
+    }
+  }
+
+
+
+  private async reconnectCurrentAgent(): Promise<void> {
+    if (!this.currentAgentId) return;
+    await this.sendExtensionMessage({ type: 'reconnect_agent', agent_id: this.currentAgentId });
+    await this.refreshAgentConnectivity(this.currentAgentId);
+    await this.refreshDiagnostics();
+  }
+
+  private async clearDiagnosticLogs(): Promise<void> {
+    await this.sendExtensionMessage({ type: 'clear_diagnostic_logs' });
+    await this.refreshDiagnostics();
+  }
+
+  private async setVerboseLogging(enabled: boolean): Promise<void> {
+    await this.sendExtensionMessage({ type: 'set_verbose_logging', enabled });
+    await this.refreshDiagnostics();
   }
 
 

@@ -9,6 +9,7 @@ import {
   RECONNECT_DELAY 
 } from '@/lib/protocol';
 import { Agent, ChatMessage, ConnectionStatusEvent, NewMessageEvent, AgentStatusEvent } from '@/types';
+import { logDiagnostic } from '@/lib/logger';
 
 export class ConnectionManager {
   private ws: WebSocket | null = null;
@@ -55,10 +56,12 @@ export class ConnectionManager {
 
       this.broadcastStatus('connecting');
 
+      await logDiagnostic('info', 'connection', 'connecting websocket', { agentId: this.agentId, wsUrl });
       this.ws = new WebSocket(wsUrl);
       
       this.ws.onopen = () => {
         console.log('WebSocket connected for agent:', this.agentId);
+        void logDiagnostic('info', 'connection', 'websocket connected', { agentId: this.agentId });
         this.isConnecting = false;
         this.broadcastStatus('connected');
         
@@ -78,6 +81,7 @@ export class ConnectionManager {
 
       this.ws.onclose = (event) => {
         console.log('WebSocket closed for agent:', this.agentId, event.code, event.reason);
+        void logDiagnostic('warn', 'connection', 'websocket closed', { agentId: this.agentId, code: event.code, reason: event.reason, clean: event.wasClean });
         this.isConnecting = false;
         this.stopHeartbeat();
         this.broadcastStatus('disconnected');
@@ -89,6 +93,7 @@ export class ConnectionManager {
 
       this.ws.onerror = (error) => {
         console.error('WebSocket error for agent:', this.agentId, error);
+        void logDiagnostic('error', 'connection', 'websocket error', { agentId: this.agentId });
         this.isConnecting = false;
         this.broadcastStatus('error');
       };
@@ -103,6 +108,7 @@ export class ConnectionManager {
 
     } catch (error) {
       console.error('Failed to connect WebSocket for agent:', this.agentId, error);
+      await logDiagnostic('error', 'connection', 'failed to connect websocket', { agentId: this.agentId, error: String(error) });
       this.isConnecting = false;
       this.broadcastStatus('error');
       
@@ -131,7 +137,7 @@ export class ConnectionManager {
   /**
    * Send a chat message to the agent
    */
-  async sendChatMessage(sessionId: string, text: string): Promise<string> {
+  async sendChatMessage(sessionId: string, text: string): Promise<{ requestId: string; queued: boolean }> {
     const requestId = createRequestId();
     
     const message: ChatRequest = {
@@ -159,16 +165,19 @@ export class ConnectionManager {
     this.broadcastNewMessage(chatMessage);
 
     // Send via WebSocket
+    let queued = false;
+
     if (this.isConnected()) {
       this.sendMessage(message);
+      await logDiagnostic('debug', 'chat', 'chat.request sent over websocket', { agentId: this.agentId, requestId });
     } else {
-      // Queue message for later
+      queued = true;
       this.messageQueue.push(message);
-      // Attempt to reconnect
+      await logDiagnostic('warn', 'chat', 'chat.request queued while disconnected', { agentId: this.agentId, requestId });
       this.connect();
     }
 
-    return requestId;
+    return { requestId, queued };
   }
 
   /**

@@ -2,6 +2,7 @@ import { ConnectionManager } from './connection';
 import { AuthManager } from './auth';
 import { SyncStorageManager, SessionStorageManager, initializeDeviceId } from '@/lib/storage';
 import { ExtensionMessage } from '@/types';
+import { logDiagnostic, getDiagnosticLogs, clearDiagnosticLogs } from '@/lib/logger';
 
 // Global connection managers for each agent
 const connectionManagers: Map<string, ConnectionManager> = new Map();
@@ -173,11 +174,11 @@ async function handleMessage(
       case 'send_message':
         const sendManager = connectionManagers.get(message.agent_id);
         if (sendManager) {
-          const requestId = await sendManager.sendChatMessage(
+          const sendResult = await sendManager.sendChatMessage(
             message.session_id,
             message.text
           );
-          sendResponse({ success: true, request_id: requestId });
+          sendResponse({ success: true, request_id: sendResult.requestId, queued: sendResult.queued });
         } else {
           sendResponse({ success: false, error: 'Agent not connected' });
         }
@@ -272,12 +273,37 @@ async function handleMessage(
         sendResponse({ success: true });
         break;
 
+
+      case 'reconnect_agent':
+        const reconnectManager = getConnectionManager(message.agent_id);
+        reconnectManager.disconnect();
+        await reconnectManager.connect();
+        sendResponse({ success: true });
+        break;
+
+      case 'get_diagnostic_logs':
+        const logs = await getDiagnosticLogs(message.limit || 200);
+        sendResponse({ success: true, logs });
+        break;
+
+      case 'clear_diagnostic_logs':
+        await clearDiagnosticLogs();
+        sendResponse({ success: true });
+        break;
+
+      case 'set_verbose_logging':
+        await chrome.storage.sync.set({ verbose_logging: Boolean(message.enabled) });
+        await logDiagnostic('info', 'settings', 'verbose logging updated', { enabled: Boolean(message.enabled) });
+        sendResponse({ success: true });
+        break;
+
       default:
         console.warn('Unknown message type:', message.type);
         sendResponse({ success: false, error: 'Unknown message type' });
     }
   } catch (error) {
     console.error('Error handling message:', error);
+    await logDiagnostic('error', 'service-worker', 'message handling error', { type: message.type, error: String(error) });
     sendResponse({ success: false, error: error instanceof Error ? error.message : String(error) });
   }
 }

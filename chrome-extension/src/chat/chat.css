@@ -231,7 +231,60 @@ body {
 .agents-list::-webkit-scrollbar,
 .dashboard-panel::-webkit-scrollbar { width: 6px; }
 
+
+.diagnostics-panel {
+  width: 320px;
+  border-left: 1px solid #e1e5e9;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+}
+
+.diagnostics-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid #e1e5e9;
+}
+
+.diagnostics-controls {
+  padding: 10px 12px;
+  border-bottom: 1px solid #e1e5e9;
+}
+
+.diagnostics-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+
+.diagnostics-buttons {
+  display: grid;
+  gap: 8px;
+}
+
+.diagnostics-status {
+  font-size: 12px;
+  color: #6c757d;
+  padding: 8px 12px;
+  border-bottom: 1px solid #e1e5e9;
+}
+
+.diagnostic-log-list {
+  flex: 1;
+  overflow-y: auto;
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: #f8f9fa;
+}
 @media (max-width: 768px) {
+  .diagnostics-panel { width: 100%; position: absolute; right: 0; top: 52px; bottom: 0; z-index: 20; box-shadow: -8px 0 16px rgba(0,0,0,0.15); }
   .sidebar {
     width: 140px;
     min-width: 140px;
