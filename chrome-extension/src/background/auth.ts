@@ -12,8 +12,14 @@ export class AuthManager {
 
   private static async getActiveRelayUrl(defaultUrl: string): Promise<string> {
     const relayConfigs = await SyncStorageManager.getRelayConfigs();
-    const activeResult = await chrome.storage.sync.get('active_relay_config');
-    const activeConfigId = activeResult.active_relay_config as string | undefined;
+    const configResult = await chrome.storage.sync.get(['active_relay_config', 'connection_mode', 'local_webui_url']);
+    const activeConfigId = configResult.active_relay_config as string | undefined;
+    const connectionMode = configResult.connection_mode as string | undefined;
+    const localGatewayUrl = configResult.local_webui_url as string | undefined;
+
+    if (connectionMode === 'local_webui' && localGatewayUrl) {
+      return localGatewayUrl;
+    }
 
     if (activeConfigId && relayConfigs[activeConfigId]?.url) {
       return relayConfigs[activeConfigId].url;

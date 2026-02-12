@@ -438,7 +438,7 @@ class PopupManager {
     (document.getElementById('connection-mode') as HTMLSelectElement).value = mode;
     (document.getElementById('relay-type') as HTMLSelectElement).value = activeConfig?.type === 'custom' ? 'custom' : 'hosted';
     (document.getElementById('custom-relay-url') as HTMLInputElement).value = activeConfig?.type === 'custom' ? activeConfig.url : '';
-    (document.getElementById('local-webui-url') as HTMLInputElement).value = (stored.local_webui_url as string) || 'http://127.0.0.1:18789/chat?session=agent:main:main';
+    (document.getElementById('local-webui-url') as HTMLInputElement).value = (stored.local_webui_url as string) || 'http://127.0.0.1:18789';
 
     this.updateSettingsVisibility();
     this.renderBillingState();
@@ -505,7 +505,7 @@ class PopupManager {
       }
     } else {
       if (!localWebUiUrl) {
-        alert('Please enter a local web UI URL.');
+        alert('Please enter a local gateway URL.');
         return;
       }
 
