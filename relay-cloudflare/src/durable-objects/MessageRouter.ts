@@ -128,9 +128,9 @@ export class MessageRouter {
     const agentClients = Array.from(clientConnections.values()).filter(conn => conn.agentId === agent_id);
     
     if (agentClients.length === 0) {
-      // No clients connected - could queue or drop
-      console.warn(`No clients connected for agent ${agent_id}, dropping response`);
-      return new Response('No connected clients');
+      // No clients currently connected for this agent: queue for later delivery
+      console.warn(`No clients connected for agent ${agent_id}, queueing response`);
+      return this.queueMessage(agent_id, message, 'client');
     }
     
     // Send to all connected clients for this agent
@@ -199,8 +199,8 @@ export class MessageRouter {
     clientConnections.set(device_id, connection);
     await this.state.storage.put('clientConnections', clientConnections);
     
-    // Process any queued messages for this client
-    await this.processQueuedMessages(device_id, 'client');
+    // Process queued client messages keyed by agent_id
+    await this.processQueuedMessages(agent_id, 'client');
     
     return new Response('Client registered');
   }
