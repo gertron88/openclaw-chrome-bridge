@@ -12,6 +12,35 @@ The Agent Connector establishes a WebSocket connection to the OpenClaw Chrome Br
 - **Auto-reconnection**: Automatically reconnect to the relay with exponential backoff on connection drops
 - **Mock Mode**: Built-in testing handlers that simulate agent responses
 
+## Fastest Setup (Low Friction)
+
+Use this path for production-like setup with the fewest steps:
+
+```bash
+cd agent-connector
+npm install
+npm run build
+
+export RELAY_URL=wss://openclaw-chrome-relay.gertron88.workers.dev
+export AGENT_ID=main-agent
+export AGENT_SECRET='replace-with-this-agent-secret'
+export AGENT_DISPLAY_NAME='Main Agent'
+
+# Terminal 1: keep connector online
+npx openclaw-connector start
+
+# Terminal 2: generate pairing code for browser
+npx openclaw-connector pair
+```
+
+Then in the Chrome extension sidebar:
+1. Open **Pair Agent**
+2. Select Hosted relay (or Custom if self-hosted)
+3. Paste pairing code
+4. Click **Start Chatting**
+
+> Production note: `AGENT_SECRET` is **agent-specific**. Do not reuse one secret across all agents.
+
 ## Installation
 
 ```bash
@@ -109,7 +138,7 @@ async function callOpenClaw(text: string, sessionId: string): Promise<string> {
 
 ## Pairing Flow
 
-1. **Agent generates code**: Use `requestPairingCode()` to get a time-limited pairing code
+1. **Agent authenticates + generates code**: Use `requestPairingCode()` (or `openclaw-connector pair`) to get a time-limited pairing code
 2. **User enters code**: User opens Chrome extension and enters the pairing code
 3. **Relay validates**: Relay server validates the code and establishes the connection
 4. **Chat enabled**: User can now send messages to the agent through Chrome extension
@@ -142,7 +171,7 @@ Uses the shared `@openclaw/protocol` package for message validation and types:
 
 ## Security
 
-- **Authentication**: Agent secret required for connection
+- **Authentication**: Agent secret required for connection (per-agent secret recommended)
 - **Message validation**: All messages validated against Zod schemas  
 - **Size limits**: Messages limited to 32KB as per protocol
 - **Authorization**: Each WebSocket connection requires proper credentials
@@ -161,11 +190,18 @@ The included mock handlers provide different testing scenarios:
 - Check `RELAY_URL` is correct WebSocket URL (ws:// or wss://)
 - Verify `AGENT_SECRET` matches this agent's registered secret in relay
 - Ensure relay server is running and accessible
+- Ensure this agent is started before generating pairing code
 
 **Pairing Issues:**
 - Pairing codes expire after 10 minutes
 - Each code can only be used once
 - Check agent is connected before requesting codes
+
+**Low-friction Recovery Checklist:**
+1. Restart connector: `npx openclaw-connector start`
+2. Generate a fresh code: `npx openclaw-connector pair`
+3. Re-pair in extension sidebar
+4. If auth fails, verify this exact agent's `AGENT_ID` + `AGENT_SECRET`
 
 **Message Issues:**
 - Messages over 32KB are rejected
