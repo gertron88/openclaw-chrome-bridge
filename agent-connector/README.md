@@ -36,7 +36,7 @@ WebSocket-based connector that enables OpenClaw/Clawdbot agents to communicate w
 |----------|----------|-------------|
 | `RELAY_URL` | Yes | WebSocket URL of the relay server (ws:// or wss://) |
 | `AGENT_ID` | Yes | Unique identifier for this agent |
-| `AGENT_SECRET` | Yes | Secret key for agent authentication |
+| `AGENT_SECRET` | Yes | Agent-specific secret for relay authentication |
 | `AGENT_DISPLAY_NAME` | No | Display name shown to users (default: "OpenClaw Agent") |
 
 ## CLI Commands

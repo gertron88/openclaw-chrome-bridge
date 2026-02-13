@@ -2,7 +2,8 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { CONFIG, generatePairingCode, type CloudflareBindings } from '@/config';
-import { generateRefreshToken, generateDeviceId, createAccessToken, storeRefreshToken, hashToken } from '@/auth/tokens';
+import { generateRefreshToken, generateDeviceId, createAccessToken, storeRefreshToken } from '@/auth/tokens';
+import { upsertAgentWithSecret } from '@/auth/agent';
 import { getAccountFromBearer, canAccountAddAgent } from '@/auth/account';
 
 const app = new Hono<{ Bindings: CloudflareBindings }>();
@@ -65,7 +66,7 @@ async function checkRateLimit(
  * Agent requests a pairing code
  */
 app.post('/start', zValidator('json', startPairingSchema), async (c) => {
-  const { DB, AGENT_SECRET } = c.env;
+  const { DB } = c.env;
   const { agent_id, display_name, tenant_id } = c.req.valid('json');
   
   // Verify agent authorization
@@ -73,9 +74,9 @@ app.post('/start', zValidator('json', startPairingSchema), async (c) => {
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return c.json({ error: 'Missing Authorization header' }, 401);
   }
-  
-  const providedSecret = authHeader.slice(7);
-  if (providedSecret !== AGENT_SECRET) {
+
+  const providedSecret = authHeader.slice(7).trim();
+  if (!providedSecret) {
     return c.json({ error: 'Invalid agent secret' }, 401);
   }
   
@@ -99,12 +100,15 @@ app.post('/start', zValidator('json', startPairingSchema), async (c) => {
     const expiresAt = now + CONFIG.PAIRING.CODE_TTL;
     const code = generatePairingCode();
     
-    // Store or update agent
-    const secretHash = await hashToken(AGENT_SECRET);
-    await DB.prepare(`
-      INSERT OR REPLACE INTO agents (id, display_name, secret_hash, tenant_id, updated_at)
-      VALUES (?, ?, ?, ?, ?)
-    `).bind(agent_id, display_name, secretHash, tenant_id || null, now).run();
+    // Store or update agent with agent-scoped secret
+    try {
+      await upsertAgentWithSecret(DB, agent_id, display_name, tenant_id || null, providedSecret);
+    } catch (error) {
+      if (error instanceof Error && error.message === 'AGENT_SECRET_MISMATCH') {
+        return c.json({ error: 'Agent already exists with a different secret' }, 401);
+      }
+      throw error;
+    }
     
     // Store pairing code (cleanup any existing codes for this agent)
     await DB.batch([

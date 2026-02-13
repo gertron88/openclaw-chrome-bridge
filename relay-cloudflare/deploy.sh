@@ -19,7 +19,7 @@ fi
 
 # Generate types
 echo "🔧 Generating TypeScript types..."
-npx wrangler types --env-interface CloudflareBindings src/types.d.ts
+npx wrangler types --env-interface CloudflareBindings worker-configuration.d.ts
 
 # Check if D1 database exists
 echo "🗃️ Checking D1 database..."
@@ -43,16 +43,10 @@ if ! npx wrangler secret list | grep -q "JWT_SECRET"; then
     secrets_missing=true
 fi
 
-if ! npx wrangler secret list | grep -q "AGENT_SECRET"; then
-    echo "❌ Missing secret: AGENT_SECRET"
-    secrets_missing=true
-fi
-
 if [ "$secrets_missing" = true ]; then
     echo ""
     echo "Please set missing secrets:"
     echo "  npx wrangler secret put JWT_SECRET"
-    echo "  npx wrangler secret put AGENT_SECRET"
     exit 1
 fi
 
@@ -68,5 +62,5 @@ npx wrangler whoami | grep "Account ID" && echo "Check your Cloudflare dashboard
 echo ""
 echo "Next steps:"
 echo "1. Test the health endpoint: curl https://your-worker-url/health"
-echo "2. Configure your agent connector to use this relay URL"
+echo "2. Configure each agent connector with AGENT_ID + AGENT_SECRET for this relay URL"
 echo "3. Install the Chrome extension and pair with your agent"

@@ -12,7 +12,8 @@ export interface CloudflareBindings {
   
   // Environment Variables/Secrets
   JWT_SECRET: string;
-  AGENT_SECRET: string;
+  AGENT_SECRET?: string;
+  ALLOW_LEGACY_GLOBAL_AGENT_SECRET?: string;
   STRIPE_SECRET_KEY?: string;
   STRIPE_PRICE_ID?: string;
   STRIPE_WEBHOOK_SECRET?: string;

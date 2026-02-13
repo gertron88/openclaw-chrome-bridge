@@ -27,7 +27,7 @@ Commands:
 Environment Variables:
   RELAY_URL           WebSocket URL of the relay server (required)
   AGENT_ID           Unique identifier for this agent (required)
-  AGENT_SECRET       Secret key for agent authentication (required)  
+  AGENT_SECRET       Agent-specific secret for relay authentication (required)  
   AGENT_DISPLAY_NAME Display name for the agent (optional)
 
 Example:

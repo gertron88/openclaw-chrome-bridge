@@ -6,12 +6,12 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "build": "wrangler types --env-interface CloudflareBindings src/config",
+    "build": "npm run types && tsc --noEmit",
     "db:create": "wrangler d1 create openclaw-relay",
     "db:migrate": "wrangler d1 migrations apply openclaw-relay",
     "db:migrate:dev": "wrangler d1 migrations apply openclaw-relay --local",
     "db:console": "wrangler d1 console openclaw-relay",
-    "types": "wrangler types --env-interface CloudflareBindings src/config"
+    "types": "wrangler types --env-interface CloudflareBindings worker-configuration.d.ts"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240320.1",

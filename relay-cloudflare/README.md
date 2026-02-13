@@ -105,7 +105,7 @@ This is the Cloudflare Workers implementation of the OpenClaw Chrome Bridge rela
 Set these as Cloudflare Worker secrets:
 
 - `JWT_SECRET`: Secret key for signing JWT tokens (32+ random characters)
-- `AGENT_SECRET`: Shared secret for agent authentication
+- `AGENT_SECRET` (optional legacy): Global fallback secret for agent authentication when `ALLOW_LEGACY_GLOBAL_AGENT_SECRET=true`.
 
 ## Database Schema
 
@@ -233,7 +233,7 @@ Cloudflare Workers automatically scale globally. Key considerations:
 ### Common Issues
 
 1. **Database ID mismatch**: Update `wrangler.toml` with correct D1 database ID
-2. **Missing secrets**: Set `JWT_SECRET` and `AGENT_SECRET` via `wrangler secret put`
+2. **Missing secrets**: Set `JWT_SECRET` via `wrangler secret put`
 3. **WebSocket connection fails**: Check CORS settings and token validity
 4. **Pairing fails**: Verify agent secret and rate limiting
 

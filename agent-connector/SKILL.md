@@ -159,7 +159,7 @@ The included mock handlers provide different testing scenarios:
 
 **Connection Issues:**
 - Check `RELAY_URL` is correct WebSocket URL (ws:// or wss://)
-- Verify `AGENT_SECRET` matches relay server configuration
+- Verify `AGENT_SECRET` matches this agent's registered secret in relay
 - Ensure relay server is running and accessible
 
 **Pairing Issues:**

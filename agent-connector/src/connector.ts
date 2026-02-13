@@ -128,7 +128,7 @@ export class AgentConnector extends EventEmitter {
         },
         body: JSON.stringify({
           agent_id: this.config.agentId,
-          agent_display_name: this.config.agentDisplayName,
+          display_name: this.config.agentDisplayName,
         }),
       });
 

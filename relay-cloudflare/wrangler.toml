@@ -6,7 +6,8 @@ compatibility_flags = ["nodejs_compat"]
 
 # Environment variables (set via wrangler secret put)
 # JWT_SECRET - for signing JWT tokens
-# AGENT_SECRET - for agent authentication
+# AGENT_SECRET - optional legacy shared agent secret (use per-agent secrets by default)
+# ALLOW_LEGACY_GLOBAL_AGENT_SECRET - set true only during migration
 # STRIPE_SECRET_KEY - Stripe API secret key
 # STRIPE_PRICE_ID - Stripe recurring price ID for Pro plan
 # STRIPE_WEBHOOK_SECRET - Stripe webhook signing secret

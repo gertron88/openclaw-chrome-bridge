@@ -1,5 +1,5 @@
 import { type CloudflareBindings } from '@/config';
-import { hashToken } from '@/auth/tokens';
+import { authenticateAgentSecret } from '@/auth/agent';
 
 export interface AgentConnectionState {
   agentId: string;
@@ -47,24 +47,16 @@ export class AgentConnection {
       return new Response('Missing agent_id parameter', { status: 400 });
     }
 
-    // Verify agent authentication
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return new Response('Missing Authorization header', { status: 401 });
-    }
+    // Verify agent authentication using agent-scoped secret
+    const authResult = await authenticateAgentSecret(
+      this.env.DB,
+      this.env,
+      agentId,
+      request.headers.get('Authorization') ?? undefined
+    );
 
-    const providedSecret = authHeader.slice(7);
-    if (providedSecret !== this.env.AGENT_SECRET) {
-      return new Response('Invalid agent secret', { status: 401 });
-    }
-
-    // Verify agent exists in database
-    const agent = await this.env.DB.prepare(`
-      SELECT id, display_name, tenant_id FROM agents WHERE id = ?
-    `).bind(agentId).first();
-
-    if (!agent) {
-      return new Response('Agent not found', { status: 404 });
+    if (!authResult.ok) {
+      return new Response(authResult.error, { status: authResult.status });
     }
 
     const webSocketPair = new WebSocketPair();
@@ -73,7 +65,7 @@ export class AgentConnection {
     this.websocket = server;
     this.agentState = {
       agentId,
-      tenantId: agent.tenant_id as string | undefined,
+      tenantId: authResult.tenantId ?? undefined,
       connectedAt: Date.now(),
       lastActivity: Date.now(),
     };
