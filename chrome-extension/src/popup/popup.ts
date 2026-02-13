@@ -173,7 +173,14 @@ class PopupManager {
   }
 
   private async getRelayBaseUrl(): Promise<string> {
-    const stored = await chrome.storage.sync.get(['relay_configs', 'active_relay_config']);
+    const stored = await chrome.storage.sync.get(['relay_configs', 'active_relay_config', 'connection_mode', 'local_webui_url']);
+
+    const connectionMode = stored.connection_mode as string | undefined;
+    const localGatewayUrl = (stored.local_webui_url as string | undefined)?.trim();
+    if (connectionMode === 'local_webui') {
+      return localGatewayUrl || 'http://127.0.0.1:18789';
+    }
+
     const relayConfigs = (stored.relay_configs as Record<string, { url: string }> | undefined) || {};
     const activeRelay = (stored.active_relay_config as string) || 'hosted';
     const activeConfig = relayConfigs[activeRelay] || relayConfigs.hosted;
@@ -504,14 +511,9 @@ class PopupManager {
         });
       }
     } else {
-      if (!localWebUiUrl) {
-        alert('Please enter a local gateway URL.');
-        return;
-      }
-
       await chrome.storage.sync.set({
         connection_mode: 'local_webui',
-        local_webui_url: localWebUiUrl,
+        local_webui_url: localWebUiUrl || 'http://127.0.0.1:18789',
       });
     }
 

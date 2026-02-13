@@ -17,8 +17,8 @@ export class AuthManager {
     const connectionMode = configResult.connection_mode as string | undefined;
     const localGatewayUrl = configResult.local_webui_url as string | undefined;
 
-    if (connectionMode === 'local_webui' && localGatewayUrl) {
-      return localGatewayUrl;
+    if (connectionMode === 'local_webui') {
+      return localGatewayUrl || 'http://127.0.0.1:18789';
     }
 
     if (activeConfigId && relayConfigs[activeConfigId]?.url) {
