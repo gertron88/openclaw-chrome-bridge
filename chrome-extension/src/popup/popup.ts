@@ -14,6 +14,10 @@ class PopupManager {
     this.bindEvents();
     await Promise.all([this.loadAgents(), this.loadBillingState()]);
     this.setupMessageListener();
+
+    if (window.location.hash === "#settings") {
+      await this.openSettings();
+    }
   }
 
   private bindEvents(): void {

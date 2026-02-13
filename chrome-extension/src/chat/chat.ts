@@ -50,6 +50,7 @@ class ChatManager {
     });
 
     document.getElementById('pair-new-agent')?.addEventListener('click', () => this.openPairingScreen());
+    document.getElementById('open-settings')?.addEventListener('click', () => this.openSettings());
     document.getElementById('pair-first-agent')?.addEventListener('click', () => this.openPairingScreen());
 
     document.getElementById('new-session')?.addEventListener('click', () => this.startNewSession());
@@ -567,6 +568,14 @@ class ChatManager {
     } catch (error) {
       console.error('Failed to remove agent:', error);
       alert('Failed to remove agent. Please try again.');
+    }
+  }
+
+  private async openSettings(): Promise<void> {
+    try {
+      await chrome.tabs.create({ url: chrome.runtime.getURL('popup.html#settings') });
+    } catch (error) {
+      console.error('Failed to open settings:', error);
     }
   }
 
